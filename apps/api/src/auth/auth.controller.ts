@@ -26,10 +26,12 @@ export class AuthController {
   ) {
     const { user, token } = await this.authService.register(body);
 
+    const isProd = process.env.NODE_ENV === 'production';
+
     res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -37,6 +39,7 @@ export class AuthController {
     return {
       message: 'Account created successfully',
       user,
+      token,
     };
   }
 
@@ -48,10 +51,12 @@ export class AuthController {
   ) {
     const { user, token } = await this.authService.login(body);
 
+    const isProd = process.env.NODE_ENV === 'production';
+
     res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -59,16 +64,19 @@ export class AuthController {
     return {
       message: 'Logged in successfully',
       user,
+      token,
     };
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   logout(@Res({ passthrough: true }) res: Response) {
+    const isProd = process.env.NODE_ENV === 'production';
+
     res.clearCookie(COOKIE_NAME, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
     });
 

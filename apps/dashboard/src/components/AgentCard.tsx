@@ -98,12 +98,14 @@ export function AgentCard() {
     setPairError(null);
   };
 
+  const localAgentUrl = process.env.NEXT_PUBLIC_AGENT_URL || 'http://localhost:4100';
+
   const disconnect = async (id: string) => {
     setRevoking(true);
     try {
       await fetch(`${API_URL}/agents/${id}/revoke`, { method: 'POST', credentials: 'include' });
       // Notify local agent to unpair immediately if running
-      await fetch('http://localhost:4100/unpair', { method: 'POST' }).catch(() => {});
+      await fetch(`${localAgentUrl}/unpair`, { method: 'POST' }).catch(() => {});
       await reload();
     } catch (err) {
       setPairError(err instanceof Error ? err.message : 'Could not disconnect agent');
@@ -180,7 +182,7 @@ export function AgentCard() {
           {/* Connected Actions */}
           <div className="flex flex-col gap-2">
             <a
-              href="http://localhost:4100"
+              href={localAgentUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/[0.06] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10 border border-white/10"

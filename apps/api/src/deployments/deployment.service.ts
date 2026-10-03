@@ -255,8 +255,11 @@ export class DeploymentService {
         );
       }
 
-      const deploymentUrl =
-        `http://localhost:4000/sites/${deployment.id}`;
+      const apiBase =
+        process.env.API_URL ||
+        process.env.PUBLIC_API_URL ||
+        'http://localhost:4000';
+      const deploymentUrl = `${apiBase}/sites/${deployment.id}`;
 
       await this.prisma.deployment.update({
         where: {
