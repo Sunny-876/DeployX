@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Current-state deployment status.
+// RUNNING = the Docker container for this deployment is actually running.
+// PAUSED  = the container exists but is paused/stopped (no public URL).
+// OFFLINE = the expected runtime is missing/unreachable on the agent.
+// READY/QUEUED/BUILDING/FAILED are kept for backwards compatibility with
+// older rows; new work writes RUNNING/PAUSED/OFFLINE.
+enum DeploymentStatus {
+  QUEUED
+  BUILDING
+  RUNNING
+  PAUSED
+  OFFLINE
+  READY
+  FAILED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+
+  projects     Project[]
+  agents       Agent[]
+  pairings     AgentPairing[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Project {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  framework   String?
+  repository  String?
+  branch      String       @default("main")
+
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  deployments Deployment[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+// A Deployment is the CURRENT runtime state of a project on an agent.
+// DeployX intentionally keeps no deployment history: one project owns at
+// most one current deployment/runtime record (see deleteDeployment /
+// delete project which remove rows permanently).
+model Deployment {
+  id         String           @id @default(cuid())
+  projectId  String
+  agentId    String?
+  status     DeploymentStatus @default(QUEUED)
+  commitHash String?
+  url        String?
+
+  // Runtime metadata mirrored from the agent/Docker (current state only).
+  containerId   String?
+  containerName String?
+  port          Int?
+  projectPath   String?
+  lastSyncedAt  DateTime?
+
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agent      Agent?           @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  logs       DeploymentLog[]
+
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([projectId])
+  @@index([agentId])
+}
+
+model DeploymentLog {
+  id           String     @id @default(cuid())
+  deploymentId String
+  message      String
+
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime   @default(now())
+}
+
+enum AgentStatus {
+  ONLINE
+  OFFLINE
+}
+
+model Agent {
+  id        String      @id @default(cuid())
+  name      String      @default("My PC")
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String      @unique
+  revokedAt DateTime?
+  status    AgentStatus @default(OFFLINE)
+  version   String?
+  hostname  String?
+  lastSeenAt DateTime?
+
+  deployments Deployment[]
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId])
+}
+
+model AgentPairing {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  codeHash  String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

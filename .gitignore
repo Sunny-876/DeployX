@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production builds
+dist/
+build/
+.next/
+out/
+
+# Environment files (never commit real secrets)
+.env
+.env*.local
+.env.production
+.env.staging
+!.env.example
+
+# Temporary project uploads and agent runtime storage
+apps/api/uploads/
+apps/api/storage/
+apps/api/AE/
+runtime-projects/
+scratch/
+builder-test/
+builder-test.zip
+*.zip
+*.mp4
+*.m4v
+*.aac
+*.mkv
+*.avi
+temp_files.txt
+deployments-store.json
+agent-store.json
+
+# Logs and debugging
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.tsbuildinfo
