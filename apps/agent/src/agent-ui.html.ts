@@ -1,455 +1,300 @@
-export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any): string {
+﻿export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any): string {
   const safeInitialState = JSON.stringify({
     agent: initialAgent || {},
     docker: initialDocker || {},
   }).replace(/</g, '\\u003c');
 
+  const agentStatus = initialAgent || {};
+  const dockerStatus = initialDocker || {};
+  const paired = !!(agentStatus.paired || agentStatus.agentId);
+  const dockerReady = !!(dockerStatus.connected || dockerStatus.dockerAvailable);
+  const apiReady = !!(agentStatus.apiUrl || process.env.DEPLOYX_API_URL);
+  const overallStatus = paired && dockerReady && apiReady ? 'Connected' : 'Checking system...';
+  const statusColor = paired && dockerReady && apiReady ? 'green' : dockerReady ? 'amber' : 'gray';
+  const dockerLabel = dockerReady ? '✓ Docker Ready' : '✕ Docker Not Found';
+  const deployxLabel = paired ? '✓ DeployX Connected' : '✕ DeployX Not Connected';
+  const apiLabel = apiReady ? '✓ API Configured' : '✕ API Not Configured';
+
   return `<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DeployX Agent</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><polygon points='12 2 2 8.5 12 15 22 8.5 12 2'/><polygon points='2 15.5 12 22 22 15.5 22 17.5 12 24 2 17.5 2 15.5'/></svg>">
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      background-color: #09090b;
-      background-image: radial-gradient(circle at 50% 0%, #161724 0%, #09090b 75%);
-      color: #f4f4f5;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .card {
-      background: #121217;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      width: 100%;
-      max-width: 440px;
-      padding: 34px 30px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.03);
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 6px;
-    }
-    .brand-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 9px;
-      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-    }
-    .brand-icon svg {
-      width: 18px;
-      height: 18px;
-      fill: #ffffff;
-    }
-    h1 {
-      font-size: 21px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #ffffff;
-    }
-    .subtitle {
-      color: #a1a1aa;
-      font-size: 13.5px;
-      line-height: 1.5;
-      margin-bottom: 22px;
-    }
-    .info-list {
-      display: flex;
-      flex-direction: column;
-      gap: 13px;
-      background: rgba(255, 255, 255, 0.025);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      padding: 16px 18px;
-      margin-bottom: 22px;
-    }
-    .info-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 13.5px;
-    }
-    .info-label {
-      color: #a1a1aa;
-      font-weight: 400;
-    }
-    .info-val {
-      font-weight: 500;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-    .dot {
-      display: inline-block;
-      font-size: 13px;
-      line-height: 1;
-    }
-    .dot.green {
-      color: #22c55e;
-      text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-    }
-    .dot.amber {
-      color: #f59e0b;
-      text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-    }
-    .dot.gray {
-      color: #71717a;
-    }
-    .form-group {
-      margin-bottom: 18px;
-    }
-    .form-label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #a1a1aa;
-      margin-bottom: 9px;
-    }
-    .code-input {
-      width: 100%;
-      height: 50px;
-      background: #09090d;
-      border: 1px solid #27272a;
-      border-radius: 10px;
-      color: #ffffff;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: 0.35em;
-      text-align: center;
-      transition: all 0.15s ease;
-      outline: none;
-    }
-    .code-input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
-    }
-    .code-input::placeholder {
-      color: #3f3f46;
-      letter-spacing: 0.25em;
-      font-weight: 500;
-    }
-    .btn-primary {
-      width: 100%;
-      height: 44px;
-      background: #ffffff;
-      color: #09090b;
-      font-size: 14px;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: background-color 0.15s ease, transform 0.05s ease;
-    }
-    .btn-primary:hover:not(:disabled) {
-      background: #e4e4e7;
-    }
-    .btn-primary:active:not(:disabled) {
-      transform: scale(0.99);
-    }
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .btn-secondary {
-      width: 100%;
-      height: 38px;
-      background: transparent;
-      color: #a1a1aa;
-      font-size: 13px;
-      font-weight: 500;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 14px;
-      transition: all 0.15s ease;
-    }
-    .btn-secondary:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-    .msg {
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 13px;
-      margin-bottom: 16px;
-      line-height: 1.4;
-      display: none;
-    }
-    .msg.error {
-      background: rgba(239, 68, 68, 0.12);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
-    }
-    .msg.success {
-      background: rgba(34, 197, 94, 0.12);
-      border: 1px solid rgba(34, 197, 94, 0.3);
-      color: #86efac;
-    }
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(0, 0, 0, 0.2);
-      border-top-color: #000000;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .footer {
-      margin-top: 22px;
-      text-align: center;
-      font-size: 12px;
-      color: #52525b;
-    }
-    .footer a {
-      color: #71717a;
-      text-decoration: none;
-    }
-    .footer a:hover {
-      text-decoration: underline;
-    }
-  </style>
-</head>
-<body>
-  <div class="card" id="agent-card">
-    <div class="brand">
-      <div class="brand-icon">
-        <svg viewBox="0 0 24 24"><polygon points="12 2 2 8.5 12 15 22 8.5 12 2"/><polygon points="2 15.5 12 22 22 15.5 22 17.5 12 24 2 17.5 2 15.5"/></svg>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeployX Agent</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #09090b;
+        color: #f4f4f5;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        padding: 24px;
+      }
+      .card {
+        width: min(100%, 520px);
+        background: #121217;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        padding: 28px 26px 22px;
+        box-shadow: 0 22px 40px rgba(0,0,0,0.45);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .brand-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      }
+      .brand-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: white;
+      }
+      .brand-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+      h1 { margin: 0; font-size: 1.1rem; }
+      .version {
+        color: #a1a1aa;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .subtitle {
+        margin: 0 0 18px;
+        color: #a1a1aa;
+        font-size: 0.92rem;
+      }
+      .status-banner {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #e4e4e7;
+        font-size: 0.92rem;
+        margin-bottom: 16px;
+      }
+      .dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+      }
+      .dot.green { background: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.6); }
+      .dot.amber { background: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+      .dot.gray { background: #71717a; }
+      .list {
+        display: grid;
+        gap: 10px;
+        padding: 16px 18px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.06);
+        background: rgba(255,255,255,0.025);
+        margin-bottom: 18px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 0.9rem;
+      }
+      .label { color: #a1a1aa; }
+      .value { color: #f4f4f5; font-weight: 600; }
+      .muted { color: #a1a1aa; }
+      .msg {
+        display: none;
+        margin: 0 0 14px;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 0.82rem;
+        line-height: 1.4;
+      }
+      .msg.error { display: block; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+      .msg.success { display: block; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+      .form-group { margin-bottom: 14px; }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #a1a1aa;
+        font-size: 0.75rem;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+      input {
+        width: 100%;
+        height: 48px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.15);
+        background: #09090d;
+        color: white;
+        text-align: center;
+        letter-spacing: 0.28em;
+        font-size: 1.4rem;
+        font-weight: 700;
+        outline: none;
+      }
+      input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.25); }
+      button {
+        width: 100%;
+        height: 42px;
+        border: none;
+        border-radius: 10px;
+        background: white;
+        color: #09090b;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.12);
+        color: #e4e4e7;
+        margin-top: 12px;
+      }
+      .footer {
+        margin-top: 18px;
+        text-align: center;
+        font-size: 0.78rem;
+        color: #71717a;
+      }
+      .footer a { color: #a1a1aa; text-decoration: none; }
+      .footer a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 2 8.5 12 15 22 8.5 12 2"/><polygon points="2 15.5 12 22 22 15.5 22 17.5 12 24 2 17.5 2 15.5"/></svg>
+        </div>
+        <div class="brand-line">
+          <h1>DeployX Agent</h1>
+          <span class="version">Version 0.1.0</span>
+        </div>
       </div>
-      <h1>DeployX Agent</h1>
+
+      <p class="subtitle">Status: ${overallStatus}</p>
+
+      <div class="status-banner">
+        <span class="dot ${statusColor}"></span>
+        <span>${overallStatus}</span>
+      </div>
+
+      <div class="list">
+        <div class="row"><span class="label">Windows</span><span class="value">✓ Ready</span></div>
+        <div class="row"><span class="label">Docker</span><span class="value">${dockerLabel}</span></div>
+        <div class="row"><span class="label">DeployX</span><span class="value">${deployxLabel}</span></div>
+        <div class="row"><span class="label">API</span><span class="value">${apiLabel}</span></div>
+      </div>
+
+      <div id="msg-box" class="msg"></div>
+
+      ${paired ? `
+        <div class="list">
+          <div class="row"><span class="label">Agent</span><span class="value">${String(agentStatus.name || agentStatus.hostname || 'This PC')}</span></div>
+          <div class="row"><span class="label">Account</span><span class="value">${String(agentStatus.account || 'Connected')}</span></div>
+          <div class="row"><span class="label">Projects</span><span class="value">${String(agentStatus.projects ?? 0)}</span></div>
+        </div>
+        <button class="secondary" type="button" onclick="disconnectAgent()">Disconnect</button>
+      ` : `
+        <div class="form-group">
+          <label for="pairing-code">Pairing code</label>
+          <input id="pairing-code" type="text" maxlength="6" placeholder="123456" autocomplete="one-time-code" />
+        </div>
+        <button id="connect-button" type="button" onclick="connectAgent()">Connect Account</button>
+      `}
+
+      <div class="footer">
+        <a href="/info" target="_blank">API Info</a>
+      </div>
     </div>
-    
-    <div id="dynamic-content"></div>
 
-    <div class="footer">
-      DeployX Agent • <a href="/info" target="_blank">API Info</a>
-    </div>
-  </div>
+    <script>
+      const initialState = ${safeInitialState};
 
-  <script>
-    const INITIAL_STATE = ${safeInitialState};
-    let isSubmitting = false;
-    let successFlash = false;
-
-    function escapeHtml(str) {
-      return String(str || '').replace(/[&<>"']/g, m => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-      })[m]);
-    }
-
-    async function fetchState() {
-      try {
-        const [agentRes, dockerRes] = await Promise.all([
-          fetch('/agent/status'),
-          fetch('/runtime/status')
-        ]);
-        const agent = await agentRes.json();
-        const docker = await dockerRes.json();
-        return { agent, docker };
-      } catch (err) {
-        console.error('Failed to fetch status:', err);
-        return null;
+      function setMessage(text, type) {
+        const box = document.getElementById('msg-box');
+        if (!box) return;
+        box.className = 'msg ' + (type || 'error');
+        box.textContent = text || '';
       }
-    }
 
-    function render(state) {
-      if (!state) return;
-      const { agent, docker } = state;
-      const isPaired = !!agent?.paired;
-      const isDockerReady = docker?.connected === true || agent?.dockerReady === true;
-      const container = document.getElementById('dynamic-content');
-      if (!container) return;
+      async function fetchStatus() {
+        try {
+          const [agentResponse, dockerResponse] = await Promise.all([
+            fetch('/agent/status'),
+            fetch('/runtime/status')
+          ]);
+          const agent = agentResponse.ok ? await agentResponse.json() : {};
+          const docker = dockerResponse.ok ? await dockerResponse.json() : {};
+          return { agent, docker };
+        } catch (error) {
+          return null;
+        }
+      }
 
-      const dockerBadge = isDockerReady
-        ? '<span class="dot green">●</span> Ready'
-        : '<span class="dot gray">○</span> Not available';
-
-      if (!isPaired) {
-        container.innerHTML = \`
-          <p class="subtitle">Connect this PC to your DeployX account.</p>
-          
-          <div id="msg-box" class="msg"></div>
-
-          <div class="info-list">
-            <div class="info-row">
-              <span class="info-label">Status</span>
-              <span class="info-val"><span class="dot amber">●</span> Not connected</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Docker</span>
-              <span class="info-val">\${dockerBadge}</span>
-            </div>
-          </div>
-
-          <form id="pairing-form" onsubmit="handleConnect(event)">
-            <div class="form-group">
-              <label class="form-label" for="pairing-code">Pairing code</label>
-              <input
-                type="text"
-                id="pairing-code"
-                class="code-input"
-                maxlength="6"
-                placeholder="505010"
-                autocomplete="off"
-                autofocus
-                required
-                pattern="[0-9]{6}"
-              />
-            </div>
-            <button type="submit" id="submit-btn" class="btn-primary">
-              Connect
-            </button>
-          </form>
-        \`;
+      async function connectAgent() {
         const input = document.getElementById('pairing-code');
-        if (input) input.focus();
-      } else {
-        const successHtml = successFlash
-          ? \`<div class="msg success" style="display:block;">✓ Agent connected successfully.</div>\`
-          : '';
+        const code = (input && input.value || '').trim();
+        const button = document.getElementById('connect-button');
 
-        container.innerHTML = \`
-          \${successHtml}
-          <div class="info-list" style="margin-top: 10px;">
-            <div class="info-row">
-              <span class="info-label">Status</span>
-              <span class="info-val"><span class="dot green">●</span> Connected</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Agent</span>
-              <span class="info-val">\${escapeHtml(agent.name || agent.hostname || 'My Device')}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Docker</span>
-              <span class="info-val">\${dockerBadge}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Account</span>
-              <span class="info-val">\${escapeHtml(agent.account || 'Connected')}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Projects</span>
-              <span class="info-val">\${agent.projects ?? 0}</span>
-            </div>
-          </div>
-
-          <button type="button" class="btn-secondary" onclick="handleDisconnect()">Disconnect</button>
-        \`;
-      }
-    }
-
-    async function handleConnect(e) {
-      e.preventDefault();
-      if (isSubmitting) return;
-
-      const input = document.getElementById('pairing-code');
-      const code = (input ? input.value : '').trim();
-      const btn = document.getElementById('submit-btn');
-      const msgBox = document.getElementById('msg-box');
-
-      if (!code || !/^\\d{6}$/.test(code)) {
-        if (msgBox) {
-          msgBox.className = 'msg error';
-          msgBox.innerText = 'Please enter a valid 6-digit pairing code.';
-          msgBox.style.display = 'block';
-        }
-        return;
-      }
-
-      isSubmitting = true;
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<div class="spinner"></div> Connecting...';
-      }
-      if (msgBox) msgBox.style.display = 'none';
-
-      try {
-        const res = await fetch('/agent/pair', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
-        });
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok) {
-          throw new Error(data?.message || 'Pairing failed. Check the code and try again.');
+        if (!/^\d{6}$/.test(code)) {
+          setMessage('Please enter a valid six-digit pairing code.', 'error');
+          return;
         }
 
-        successFlash = true;
-        const freshState = await fetchState();
-        render(freshState);
-      } catch (err) {
-        if (msgBox) {
-          msgBox.className = 'msg error';
-          msgBox.innerText = err.message || 'Connection failed.';
-          msgBox.style.display = 'block';
+        if (button) {
+          button.disabled = true;
+          button.textContent = 'Connecting...';
         }
-        if (btn) {
-          btn.disabled = false;
-          btn.innerText = 'Connect';
+
+        try {
+          const response = await fetch('/agent/pair', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok) {
+            throw new Error(data?.message || 'Pairing failed. Please try again.');
+          }
+          setMessage('Pairing successful. DeployX is now connected.', 'success');
+          const fresh = await fetchStatus();
+          if (fresh) window.location.reload();
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : 'Unable to pair this agent.', 'error');
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.textContent = 'Connect Account';
+          }
         }
-      } finally {
-        isSubmitting = false;
       }
-    }
 
-    async function handleDisconnect() {
-      if (!confirm('Disconnect this agent from DeployX?')) return;
-      try {
-        await fetch('/agent/unpair', { method: 'POST' });
-        successFlash = false;
-        const freshState = await fetchState();
-        render(freshState);
-      } catch (err) {
-        console.error('Disconnect failed:', err);
+      async function disconnectAgent() {
+        try {
+          const response = await fetch('/agent/unpair', { method: 'POST' });
+          if (!response.ok) throw new Error('Unable to disconnect the agent.');
+          setMessage('Agent disconnected. You can connect again later.', 'success');
+          window.location.reload();
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : 'Disconnect failed.', 'error');
+        }
       }
-    }
 
-    // Render immediately using server-injected state
-    render(INITIAL_STATE);
-
-    // Fetch live state immediately to confirm Docker / Agent freshness
-    fetchState().then(render);
-
-    // Periodically sync status every 10s
-    setInterval(async () => {
-      if (!isSubmitting) {
-        const freshState = await fetchState();
-        if (freshState) render(freshState);
-      }
-    }, 10000);
-  </script>
-</body>
+      window.addEventListener('DOMContentLoaded', () => {
+        if (!initialState?.agent?.paired && document.getElementById('pairing-code')) {
+          document.getElementById('pairing-code')?.focus();
+        }
+      });
+    </script>
+  </body>
 </html>`;
 }

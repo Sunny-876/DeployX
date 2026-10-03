@@ -122,6 +122,8 @@ export class ProjectDetectorService {
       if (
         dependencies.next
       ) {
+        const packageManager = this.detectPackageManager(projectRoot);
+
         return {
           type: 'nextjs',
 
@@ -134,18 +136,15 @@ export class ProjectDetectorService {
 
           buildCommand:
             scripts.build
-              ? 'npm run build'
-              : 'npx next build',
+              ? this.runPackageScript(packageManager, 'build')
+              : this.runBinary(packageManager, 'next', 'build'),
 
           startCommand:
-            'NODE_ENV=production npx next start -H 0.0.0.0 -p 3000',
+            `NODE_ENV=production ${this.runBinary(packageManager, 'next', 'start -H 0.0.0.0 -p 3000')}`,
 
           port: 3000,
 
-          packageManager:
-            this.detectPackageManager(
-              projectRoot,
-            ),
+          packageManager,
 
           projectRoot,
         };
@@ -160,6 +159,8 @@ export class ProjectDetectorService {
         scripts.dev ||
         packageJson.main
       ) {
+        const packageManager = this.detectPackageManager(projectRoot);
+
         return {
           type: 'node',
 
@@ -172,12 +173,12 @@ export class ProjectDetectorService {
 
           buildCommand:
             scripts.build
-              ? 'npm run build'
+              ? this.runPackageScript(packageManager, 'build')
               : null,
 
           startCommand:
             scripts.start
-              ? 'npm start'
+              ? this.runPackageScript(packageManager, 'start')
               : `node ${
                   packageJson.main ||
                   'server.js'
@@ -185,10 +186,7 @@ export class ProjectDetectorService {
 
           port: 3000,
 
-          packageManager:
-            this.detectPackageManager(
-              projectRoot,
-            ),
+          packageManager,
 
           projectRoot,
         };
@@ -420,29 +418,48 @@ export class ProjectDetectorService {
     return 'npm';
   }
 
+  private runPackageScript(
+    packageManager: 'npm' | 'pnpm' | 'yarn',
+    scriptName: string,
+  ): string {
+    if (packageManager === 'pnpm') {
+      return `pnpm run ${scriptName}`;
+    }
+
+    if (packageManager === 'yarn') {
+      return `yarn ${scriptName}`;
+    }
+
+    return `npm run ${scriptName}`;
+  }
+
+  private runBinary(
+    packageManager: 'npm' | 'pnpm' | 'yarn',
+    binaryName: string,
+    args: string,
+  ): string {
+    if (packageManager === 'pnpm') {
+      return `pnpm exec ${binaryName} ${args}`.trim();
+    }
+
+    if (packageManager === 'yarn') {
+      return `yarn ${binaryName} ${args}`.trim();
+    }
+
+    return `npx ${binaryName} ${args}`.trim();
+  }
+
   private detectInstallCommand(
     projectPath: string,
   ): string {
-    if (
-      fs.existsSync(
-        path.join(
-          projectPath,
-          'pnpm-lock.yaml',
-        ),
-      )
-    ) {
-      return 'corepack enable && pnpm install --frozen-lockfile';
+    const packageManager = this.detectPackageManager(projectPath);
+
+    if (packageManager === 'pnpm') {
+      return 'corepack enable && pnpm install --frozen-lockfile --prefer-offline';
     }
 
-    if (
-      fs.existsSync(
-        path.join(
-          projectPath,
-          'yarn.lock',
-        ),
-      )
-    ) {
-      return 'corepack enable && yarn install --frozen-lockfile';
+    if (packageManager === 'yarn') {
+      return 'corepack enable && yarn install --frozen-lockfile --prefer-offline --non-interactive';
     }
 
     if (
@@ -453,10 +470,10 @@ export class ProjectDetectorService {
         ),
       )
     ) {
-      return 'npm install --include=dev';
+      return 'npm ci --include=dev --prefer-offline --no-audit --no-fund';
     }
 
-    return 'npm install --include=dev';
+    return 'npm install --include=dev --prefer-offline --no-audit --no-fund';
   }
 
   private readPackageJson(

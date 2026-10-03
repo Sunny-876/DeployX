@@ -3,11 +3,12 @@ import * as os from 'os';
 import { clearIdentity, loadIdentity, resolveAgentDataDir, saveIdentity } from './agent-identity.store';
 import { RuntimeService } from '../runtime/runtime.service';
 import { DeploymentManagerService } from '../deployment/deployment-manager.service';
+import { resolveApiUrl } from '../config/agent-config';
 
 @Injectable()
 export class PairingService implements OnModuleInit {
   private readonly logger = new Logger('PairingService');
-  private readonly apiUrl = process.env.DEPLOYX_API_URL || process.env.API_URL || 'http://localhost:4000';
+  private readonly apiUrl = resolveApiUrl();
   private readonly version = '0.1.0';
   private timer: NodeJS.Timeout | null = null;
   private syncing = false;

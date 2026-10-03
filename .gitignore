@@ -10,19 +10,26 @@ out/
 
 # Environment files (never commit real secrets)
 .env
-.env*.local
-.env.production
-.env.staging
+.env.*
 !.env.example
+**/.env
+**/.env.*
+!**/.env.example
+!apps/**/.env.example
 
 # Temporary project uploads and agent runtime storage
 apps/api/uploads/
 apps/api/storage/
 apps/api/AE/
+uploads/
+storage/
 runtime-projects/
 scratch/
+tmp/
+temp/
 builder-test/
 builder-test.zip
+apps/agent-windows-package/
 *.zip
 *.mp4
 *.m4v
@@ -32,8 +39,26 @@ builder-test.zip
 temp_files.txt
 deployments-store.json
 agent-store.json
+**/deployments-store.json
+**/agent-store.json
+**/agent-state.json
+releases/*.exe
+releases/*.zip
+releases/checksums.txt
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.db-*
 
 # Logs and debugging
+logs/
+**/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -44,7 +69,9 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .idea/
+.vercel/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
 *.tsbuildinfo
+.neon

@@ -1,9 +1,9 @@
 packages:
   - 'apps/*'
 allowBuilds:
-  '@prisma/engines': set this to true or false
-  cpu-features: set this to true or false
-  prisma: set this to true or false
-  protobufjs: set this to true or false
-  ssh2: set this to true or false
-  unrs-resolver: set this to true or false
+  '@prisma/engines': true
+  cpu-features: true
+  prisma: true
+  protobufjs: true
+  ssh2: true
+  unrs-resolver: true

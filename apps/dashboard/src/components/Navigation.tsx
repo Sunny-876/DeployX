@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Rocket, Plus, Layers, Cpu, LayoutDashboard, Menu, X, LogOut, User as UserIcon } from 'lucide-react';
+import { Rocket, Plus, Layers, Cpu, LayoutDashboard, Menu, X, LogOut, User as UserIcon, Shield } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
 import { useAgents } from './useAgents';
 
@@ -18,6 +18,7 @@ export function Navigation() {
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Projects', href: '/dashboard/projects', icon: Layers },
     { label: 'Deployments', href: '/dashboard/deployments', icon: Cpu },
+    ...(user?.role === 'ADMIN' ? [{ label: 'Admin', href: '/admin', icon: Shield }] : []),
   ];
 
   const isActive = (href: string) => {
@@ -69,6 +70,10 @@ export function Navigation() {
 
         {/* Right Action & Status */}
         <div className="hidden items-center gap-4 md:flex">
+          <Link href="/feedback" className="text-xs font-medium text-zinc-300 transition hover:text-white">
+            Feedback
+          </Link>
+
           {/* Agent status — real state from GET /agents */}
           <Link
             href="/dashboard"
@@ -166,6 +171,9 @@ export function Navigation() {
               );
             })}
             <div className="my-2 border-t border-white/10 pt-2 flex flex-col gap-2">
+              <Link href="/feedback" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-zinc-300 hover:text-white">
+                Feedback
+              </Link>
               <Link
                 href="/dashboard/deploy"
                 onClick={() => setMobileMenuOpen(false)}

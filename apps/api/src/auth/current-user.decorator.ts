@@ -4,6 +4,7 @@ export class AuthenticatedUser {
   id!: string;
   email!: string;
   name!: string;
+  role!: 'USER' | 'ADMIN';
 }
 
 export const CurrentUser = createParamDecorator(

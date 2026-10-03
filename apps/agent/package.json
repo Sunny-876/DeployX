@@ -6,7 +6,9 @@
     "dev": "nest start --watch",
     "start:dev": "nest start --watch",
     "build": "nest build",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "build:package": "node ./scripts/build-windows-package.mjs",
+    "build:installer": "node ./scripts/build-windows-package.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",

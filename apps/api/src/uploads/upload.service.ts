@@ -47,11 +47,17 @@ export class UploadService {
     };
   }
 
+  private formatDuration(start: number): string {
+    const seconds = ((Date.now() - start) / 1000).toFixed(1);
+    return `${seconds}s`;
+  }
+
   async extractZip(
     file?: Express.Multer.File,
     localZipPath?: string,
     userId?: string,
   ) {
+    const uploadStart = Date.now();
     const limits = this.getLimits();
     const maxUploadBytes = limits.maxUploadSizeMb * 1024 * 1024;
     const maxExtractedBytes = limits.maxExtractedSizeMb * 1024 * 1024;
@@ -242,6 +248,8 @@ export class UploadService {
       userId: ownerId,
       projectName: project.name,
     });
+
+    this.logger.log(`[Upload] Total upload processing time: ${this.formatDuration(uploadStart)}`);
 
     return {
       success: true,

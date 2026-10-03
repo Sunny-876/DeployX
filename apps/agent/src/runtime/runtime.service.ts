@@ -8,7 +8,9 @@ import {
 
 import Docker from 'dockerode';
 import { PortService } from './port.service';
+import * as crypto from 'node:crypto';
 import * as fs from 'fs';
+import * as os from 'node:os';
 import * as path from 'path';
 
 import {
@@ -140,16 +142,22 @@ export class RuntimeService implements OnModuleInit {
 
       return {
         connected: true,
+        dockerAvailable: true,
         containers: info.Containers,
         running: info.ContainersRunning,
         stopped: info.ContainersStopped,
+        message: 'Docker is ready.',
       };
-    } catch {
+    } catch (error) {
+      const message = 'Docker is required to run your projects. Start Docker Desktop and try again.';
       return {
         connected: false,
+        dockerAvailable: false,
         containers: 0,
         running: 0,
         stopped: 0,
+        message,
+        error: error instanceof Error ? error.message : 'Docker unavailable',
       };
     }
   }
@@ -439,6 +447,105 @@ export class RuntimeService implements OnModuleInit {
     return dir;
   }
 
+  private formatStageDuration(start: number): string {
+    const seconds = ((Date.now() - start) / 1000).toFixed(1);
+    return `${seconds}s`;
+  }
+
+  private resolveDependencyCache(projectPath: string, detection: ReturnType<ProjectDetectorService['detect']>) {
+    if (!projectPath || detection.packageManager === 'none') {
+      return { shouldInstall: false, cacheDir: null, reused: false };
+    }
+
+    const packageManagerFiles = [
+      'package.json',
+      'package-lock.json',
+      'pnpm-lock.yaml',
+      'yarn.lock',
+    ];
+
+    const digestSource = [
+      detection.packageManager,
+      process.version,
+    ];
+
+    for (const fileName of packageManagerFiles) {
+      const filePath = path.join(projectPath, fileName);
+      if (fs.existsSync(filePath)) {
+        digestSource.push(fileName);
+        digestSource.push(fs.readFileSync(filePath, 'utf8'));
+      }
+    }
+
+    const cacheKey = crypto
+      .createHash('sha256')
+      .update(digestSource.join('\n'))
+      .digest('hex')
+      .slice(0, 24);
+
+    const cacheDir = path.join(
+      os.homedir(),
+      '.deployx',
+      'dependency-cache',
+      detection.packageManager,
+      cacheKey,
+    );
+
+    const cachedNodeModules = path.join(cacheDir, 'node_modules');
+    const projectNodeModules = path.join(projectPath, 'node_modules');
+
+    if (fs.existsSync(cachedNodeModules)) {
+      if (!fs.existsSync(projectNodeModules)) {
+        fs.mkdirSync(projectPath, { recursive: true });
+        fs.cpSync(cachedNodeModules, projectNodeModules, { recursive: true, force: true });
+      }
+      return { shouldInstall: false, cacheDir, reused: true };
+    }
+
+    return { shouldInstall: true, cacheDir, reused: false };
+  }
+
+  private persistDependencyCache(
+    projectPath: string,
+    detection: ReturnType<ProjectDetectorService['detect']>,
+    cacheState: { cacheDir: string | null },
+  ) {
+    if (!cacheState.cacheDir || detection.packageManager === 'none') {
+      return;
+    }
+
+    const projectNodeModules = path.join(projectPath, 'node_modules');
+    if (!fs.existsSync(projectNodeModules)) {
+      return;
+    }
+
+    const cacheNodeModules = path.join(cacheState.cacheDir, 'node_modules');
+    fs.mkdirSync(cacheState.cacheDir, { recursive: true });
+    fs.cpSync(projectNodeModules, cacheNodeModules, { recursive: true, force: true });
+  }
+
+  private buildShellCommand(
+    detection: ReturnType<ProjectDetectorService['detect']>,
+    skipInstall: boolean,
+  ): string[] {
+    const commands: string[] = [];
+
+    if (detection.installCommand && !skipInstall) {
+      commands.push(
+        `echo "[Deploy] Dependencies start"; start=$(date +%s); ${detection.installCommand}; end=$(date +%s); echo "[Deploy] Dependencies: $((end-start))s";`,
+      );
+    }
+
+    if (detection.buildCommand) {
+      commands.push(
+        `echo "[Deploy] Build start"; start=$(date +%s); ${detection.buildCommand}; end=$(date +%s); echo "[Deploy] Build: $((end-start))s";`,
+      );
+    }
+
+    commands.push(detection.startCommand);
+    return commands;
+  }
+
   private prepareProjectCommand(
     projectPath: string,
   ): {
@@ -446,11 +553,14 @@ export class RuntimeService implements OnModuleInit {
     detection: ReturnType<
       ProjectDetectorService['detect']
     >;
+    cacheState: { shouldInstall: boolean; cacheDir: string | null; reused: boolean };
   } {
     const detection =
       this.detector.detect(
         projectPath,
       );
+
+    const cacheState = this.resolveDependencyCache(projectPath, detection);
 
     this.logger.log(
       `Detected project type: ${detection.type}`,
@@ -464,9 +574,11 @@ export class RuntimeService implements OnModuleInit {
       `Detected package manager: ${detection.packageManager}`,
     );
 
-    this.logger.log(
-      `Detected start command: ${detection.startCommand}`,
-    );
+    if (cacheState.reused) {
+      this.logger.log(`Reusing dependency cache for ${detection.packageManager} project.`);
+    } else if (detection.installCommand && !cacheState.shouldInstall) {
+      this.logger.log('Dependency cache warm but no install needed.');
+    }
 
     // -----------------------------
     // STATIC
@@ -622,7 +734,7 @@ server.listen(
 
       return {
         detection,
-
+        cacheState,
         command: [
           'sh',
           '-c',
@@ -639,41 +751,13 @@ server.listen(
       detection.type === 'nextjs' ||
       detection.type === 'node'
     ) {
-      const installCommand =
-        detection.installCommand ||
-        'npm install';
-
-      const buildCommand =
-        detection.buildCommand;
-
-      const startCommand =
-        detection.startCommand;
-
-      const commands: string[] = [];
-
-      commands.push(
-        installCommand,
-      );
-
-      if (buildCommand) {
-        commands.push(
-          buildCommand,
-        );
-      }
-
-      commands.push(
-        startCommand,
-      );
-
       return {
         detection,
-
+        cacheState,
         command: [
           'sh',
           '-c',
-          commands.join(
-            ' && ',
-          ),
+          this.buildShellCommand(detection, !cacheState.shouldInstall).join(' && '),
         ],
       };
     }
@@ -717,6 +801,7 @@ server.listen(
       );
     }
 
+    const totalStart = Date.now();
     const effectivePath = this.resolveProjectRoot(absolutePath);
     this.logger.log(`Resolved project root: ${effectivePath}`);
 
@@ -731,8 +816,12 @@ server.listen(
     const detection =
       runtimeConfig.detection;
 
+    const projectPrepStart = Date.now();
     onLog?.(`Project detected: ${detection.type}`);
-    onLog?.('Installing dependencies & building project...');
+    onLog?.(runtimeConfig.cacheState.reused
+      ? '[Deploy] Reusing dependency cache for a previously installed dependency set.'
+      : 'Installing dependencies & building project...');
+    onLog?.(`[Deploy] Framework detection: ${this.formatStageDuration(projectPrepStart)} `);
 
     this.logger.log(
       `Project type: ${detection.type}`,
@@ -755,7 +844,9 @@ server.listen(
     let buildTimeoutTimer: NodeJS.Timeout | null = null;
 
     try {
+      const containerCreationStart = Date.now();
       await this.ensureImage('node:22-alpine');
+      onLog?.(`[Deploy] Container prep: ${this.formatStageDuration(containerCreationStart)}`);
 
       const normalizedMountPath = effectivePath.replace(/\\/g, '/');
 
@@ -828,7 +919,9 @@ server.listen(
         });
       }
 
+      const containerStartTimer = Date.now();
       await container.start();
+      onLog?.(`[Deploy] Container startup: ${this.formatStageDuration(containerStartTimer)}`);
 
       buildTimeoutTimer = setTimeout(() => {
         buildTimedOut = true;
@@ -921,12 +1014,14 @@ server.listen(
         }
       })();
 
+      const healthStart = Date.now();
       const healthy =
         await this.health.waitForHttpWithExitGuard(
           port,
           startupTimeoutMs,
           () => containerExited || buildTimedOut || cancelled,
         );
+      onLog?.(`[Deploy] Health check: ${this.formatStageDuration(healthStart)}`);
 
       if (buildTimeoutTimer) {
         clearTimeout(buildTimeoutTimer);
@@ -959,6 +1054,11 @@ server.listen(
 
         throw new BadRequestException(reason);
       }
+
+      onLog?.(`[Deploy] Total deployment time: ${this.formatStageDuration(totalStart)}`);
+      this.logger.log(`[Deploy] Total deployment time: ${this.formatStageDuration(totalStart)}`);
+
+      this.persistDependencyCache(effectivePath, detection, runtimeConfig.cacheState);
 
       return {
         success: true,

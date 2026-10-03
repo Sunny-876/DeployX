@@ -15,12 +15,13 @@ import { AgentModule } from './agent/agent.module.js';
 import { AgentsModule } from './agents/agents.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { RuntimeModule } from './runtime/runtime.module.js';
-
+import { AdminModule } from './admin/admin.module.js';
 
 @Module({
   imports: [
     PrismaModule,
     AuthModule,
+    AdminModule,
     AgentsModule,
     ProjectsModule,
     DeploymentModule,

@@ -33,6 +33,7 @@ export class AuthGuard implements CanActivate {
           id: true,
           email: true,
           name: true,
+          role: true,
         },
       });
 
@@ -40,12 +41,29 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('User account no longer exists');
       }
 
-      request.user = user;
+      const resolvedRole = this.resolveRole(user.email, user.role);
+      request.user = {
+        ...user,
+        role: resolvedRole,
+      };
       return true;
     } catch (err: any) {
       console.error('AuthGuard error:', err?.message || err);
       throw new UnauthorizedException('Invalid or expired authentication session');
     }
+  }
+
+  private resolveRole(email: string, currentRole: string | null): 'USER' | 'ADMIN' {
+    const configuredAdmins = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (configuredAdmins.includes(email.toLowerCase()) || currentRole === 'ADMIN') {
+      return 'ADMIN';
+    }
+
+    return 'USER';
   }
 
   private extractToken(request: any): string | null {

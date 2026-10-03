@@ -4,6 +4,16 @@
 
 DeployX connects local Docker environments to a centralized dashboard and API, enabling instant deployment, real-time log streaming, health verification, and public URL generation via Cloudflare Quick Tunnels.
 
+## Connect Your PC
+
+1. Open the DeployX dashboard.
+2. Click "Connect Your PC".
+3. Download the Windows DeployX Agent installer.
+4. Run the installer and keep the default install location.
+5. Start the Agent and open http://localhost:4100.
+6. Enter the six-digit pairing code shown in the dashboard.
+7. The Agent will appear online and begin handling local Docker builds.
+
 ---
 
 ## 1. System Architecture
@@ -164,7 +174,56 @@ pnpm test
 
 ---
 
-## 8. Documentation
+## 8. Beta Limitations
+
+DeployX is currently a closed beta and should be treated as a local-runtime prototype, not a permanent hosting platform.
+
+- Temporary public URLs are expected and will expire or be replaced during the active deployment.
+- The student PC must remain online while the deployment is running.
+- Project execution stops when the computer shuts down or disconnects.
+- Docker Desktop is required for the local runtime path.
+- Windows is the intended public deployment target for the Agent.
+- No custom-domain hosting or permanent public runtime is guaranteed in this beta.
+
+---
+
+## 9. Reporting Bugs and Feedback
+
+Please use the repository issue tracker to report bugs or request features:
+
+- GitHub Issues: https://github.com/DeployX/DeployX/issues
+- Security issues: use the repository's private security reporting path rather than a public issue.
+
+When reporting a bug, include:
+- DeployX Agent version
+- Windows version
+- Docker version
+- browser
+- deployment ID if available
+- project framework
+- error message
+- steps to reproduce
+- relevant log excerpt
+
+Do not include passwords, tokens, environment secrets, or database credentials.
+
+---
+
+## 10. Release Process
+
+Agent releases are versioned as `X.Y.Z` and stored in `releases/` after generation.
+
+Example:
+
+```powershell
+pwsh -File .\scripts\release-agent.ps1 -Version 0.1.0
+```
+
+This command validates the version, builds the Agent, prepares the Windows installer, and writes a SHA-256 checksum file. It does not publish a GitHub release automatically.
+
+---
+
+## 11. Documentation
 
 | Guide | Description |
 |:------|:------------|

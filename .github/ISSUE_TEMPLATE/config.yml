@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub issue tracker
+    url: https://github.com/DeployX/DeployX/issues
+    about: Report bugs or share feedback using the public issue tracker.
+  - name: Security report
+    url: https://github.com/DeployX/DeployX/security
+    about: Report a security issue privately through the repository security advisory flow.
