@@ -8,6 +8,8 @@ DeployX connects local Docker environments to a centralized dashboard and API, e
 
 ## 1. System Architecture
 
+### Local Development
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │                   DeployX Dashboard                    │
@@ -34,6 +36,31 @@ DeployX connects local Docker environments to a centralized dashboard and API, e
 │     Docker Containers      │ │   Public HTTPS URL      │
 │  (node:22-alpine / Custom) │ │ (*.trycloudflare.com)   │
 └────────────────────────────┘ └─────────────────────────┘
+```
+
+### Production
+
+```text
+             Internet
+                |
+                v
+     Dashboard (Vercel) -- HTTPS / httpOnly cookie (sameSite=none) -->
+                |
+                v
+       API (Render / Railway)
+                |  PostgreSQL SSL
+                v
+         Neon / Supabase DB
+
+  Student PC:
+    Agent (port 4100) -- outbound HTTPS heartbeats --> API
+         |
+         v
+   Docker containers --> Cloudflare Quick Tunnel --> Public URL
+```
+
+> **Security Guarantee**: The cloud API **NEVER** executes student code. All
+> builds and containers run exclusively on the student's machine.
 ```
 
 ---
@@ -134,3 +161,15 @@ Run integration and hardening test suites:
 ```bash
 pnpm test
 ```
+
+---
+
+## 8. Documentation
+
+| Guide | Description |
+|:------|:------------|
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Step-by-step guide to go live on Vercel + Render + Neon |
+| [docs/AGENT.md](docs/AGENT.md) | Student agent installation, pairing, and troubleshooting |
+| [docs/SECURITY.md](docs/SECURITY.md) | Security model, threat mitigations, and production checklist |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common errors and fixes |
+| [docs/PRODUCTION.md](docs/PRODUCTION.md) | Detailed production infrastructure reference |
