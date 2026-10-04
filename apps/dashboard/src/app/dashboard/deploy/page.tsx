@@ -19,6 +19,7 @@ import {
   Pause,
   Play,
   Terminal,
+  Trash2,
 } from 'lucide-react';
 import { API_URL } from '../../../lib/utils';
 
@@ -224,13 +225,15 @@ export default function DeployPage() {
     if (!deploymentId) return;
 
     const currentStatus = deployment.status;
+    const isAlreadyLive = (currentStatus === 'READY' || currentStatus === 'RUNNING') && !!deployment.url;
     const shouldPoll =
-      currentStatus === 'BUILDING' ||
-      currentStatus === 'QUEUED' ||
-      currentStatus === 'STARTING' ||
-      currentStatus === 'RUNNING' ||
-      currentStatus === 'CREATING_TUNNEL' ||
-      currentStatus === 'RESUMING';
+      !isAlreadyLive &&
+      (currentStatus === 'BUILDING' ||
+        currentStatus === 'QUEUED' ||
+        currentStatus === 'STARTING' ||
+        currentStatus === 'RUNNING' ||
+        currentStatus === 'CREATING_TUNNEL' ||
+        currentStatus === 'RESUMING');
 
     if (!shouldPoll) return;
 
@@ -242,6 +245,7 @@ export default function DeployPage() {
       if (
         updated &&
         (updated.status === 'READY' ||
+          (updated.status === 'RUNNING' && updated.url) ||
           updated.status === 'PAUSED' ||
           updated.status === 'FAILED')
       ) {
@@ -469,6 +473,44 @@ export default function DeployPage() {
 
   /*
    * -----------------------------------------
+   * DELETE DEPLOYMENT VIA API
+   * -----------------------------------------
+   */
+
+  const deleteDeployment = async () => {
+    const deploymentId = deployment?.id;
+    if (!deploymentId) return;
+
+    if (!window.confirm('Are you sure you want to delete this deployment and stop its container?')) {
+      return;
+    }
+
+    setActionLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/deployments/${deploymentId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || 'Failed to delete deployment.');
+      }
+
+      setDeployment(null);
+      setLogs([]);
+      setFile(null);
+    } catch (err: unknown) {
+      setError(formatErrorMessage(err));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /*
+   * -----------------------------------------
    * STATUS & DERIVED STATE
    * -----------------------------------------
    */
@@ -476,21 +518,26 @@ export default function DeployPage() {
   const currentStatus = deployment?.status || 'QUEUED';
   const publicUrl = deployment?.url || '';
 
-  const statusReady = currentStatus === 'READY';
+  // In DeployX, an active deployment with a public URL is LIVE
+  const isLive = (currentStatus === 'READY' || currentStatus === 'RUNNING') && !!publicUrl;
+  const statusReady = isLive;
   const statusPaused = currentStatus === 'PAUSED';
   const statusFailed = currentStatus === 'FAILED';
   const statusBuilding =
-    currentStatus === 'BUILDING' ||
-    currentStatus === 'QUEUED' ||
-    currentStatus === 'STARTING' ||
-    currentStatus === 'RUNNING' ||
-    currentStatus === 'CREATING_TUNNEL';
+    !isLive &&
+    !statusPaused &&
+    !statusFailed &&
+    (currentStatus === 'BUILDING' ||
+      currentStatus === 'QUEUED' ||
+      currentStatus === 'STARTING' ||
+      currentStatus === 'CREATING_TUNNEL' ||
+      currentStatus === 'RUNNING');
   const statusResuming = currentStatus === 'RESUMING';
 
   // Pipeline check marks calculated from real lifecycle
   const isUploaded = !!deployment;
   const isBuilt =
-    statusReady ||
+    isLive ||
     statusPaused ||
     currentStatus === 'RUNNING' ||
     currentStatus === 'CREATING_TUNNEL' ||
@@ -499,10 +546,13 @@ export default function DeployPage() {
         l.includes('Build completed') ||
         l.includes('Compiled successfully') ||
         l.includes('Build finished') ||
-        l.includes('Project ready'),
+        l.includes('Project ready') ||
+        l.includes('Container prep') ||
+        l.includes('Static runtime ready') ||
+        l.includes('Total deployment time'),
     );
   const isRunning =
-    statusReady ||
+    isLive ||
     statusPaused ||
     currentStatus === 'RUNNING' ||
     currentStatus === 'CREATING_TUNNEL' ||
@@ -511,9 +561,11 @@ export default function DeployPage() {
         l.includes('Application healthy') ||
         l.includes('Application started') ||
         l.includes('Container running') ||
-        l.includes('Ready in'),
+        l.includes('Ready in') ||
+        l.includes('Static runtime ready') ||
+        l.includes('Health check'),
     );
-  const isPublic = statusReady && !!publicUrl;
+  const isPublic = isLive;
 
   /*
    * -----------------------------------------
@@ -704,7 +756,7 @@ export default function DeployPage() {
                   />
                 )}
 
-                {currentStatus}
+                {isLive ? 'LIVE' : currentStatus}
               </div>
             </div>
 
@@ -783,45 +835,73 @@ export default function DeployPage() {
               </div>
             </div>
 
-            {/* Public URL Box (Part 15) */}
-            {statusReady && publicUrl && (
-              <div className="mt-7 rounded-2xl border border-white/10 bg-black/20 p-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  Public URL
-                </p>
-
-                <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center">
-                  <div className="min-w-0 flex-1 truncate rounded-xl bg-white/[0.04] px-4 py-3 font-mono text-sm text-zinc-300">
-                    {publicUrl}
+            {/* Public URL Preview Card (Screenshot 3 Hero Style) */}
+            {isLive && publicUrl && (
+              <div className="mt-7 rounded-[28px] border border-white/10 bg-[#111114] p-6 sm:p-7 shadow-xl">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                      Public URL preview
+                    </p>
+                    <h3 className="mt-2 text-2xl font-bold tracking-tight text-white">
+                      Project is live.
+                    </h3>
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={copyUrl}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
-                    >
-                      {copied ? (
-                        <>
-                          <Check size={16} />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={16} />
-                          Copy
-                        </>
-                      )}
-                    </button>
+                  <div className="w-full lg:max-w-xl">
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-emerald-200">
+                            Project
+                          </div>
+                          <div className="mt-1 text-xl font-bold text-white">
+                            {deployment.project?.name || 'Project'}
+                          </div>
+                        </div>
+                        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                          Live
+                        </div>
+                      </div>
 
-                    <a
-                      href={publicUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:bg-white/5"
-                    >
-                      <ExternalLink size={16} />
-                      Open
-                    </a>
+                      <div className="mt-4 rounded-xl border border-white/10 bg-[#09090b] p-3.5">
+                        <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                          Public URL
+                        </div>
+                        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="font-mono text-sm text-zinc-200 break-all select-all">
+                            {publicUrl}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={copyUrl}
+                              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-zinc-200 transition hover:bg-white/[0.08]"
+                            >
+                              {copied ? (
+                                <>
+                                  <Check size={14} className="text-emerald-400" />
+                                  <span className="text-emerald-400">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={14} />
+                                  Copy
+                                </>
+                              )}
+                            </button>
+                            <a
+                              href={publicUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 rounded-lg bg-white px-3.5 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                            >
+                              <ExternalLink size={14} />
+                              Open
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -839,9 +919,9 @@ export default function DeployPage() {
               </div>
             )}
 
-            {/* Controls (Pause / Resume) (Part 16) */}
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              {statusReady && (
+            {/* Controls (Pause / Resume / Delete) */}
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              {isLive && (
                 <button
                   onClick={pauseDeployment}
                   disabled={actionLoading}
@@ -852,7 +932,7 @@ export default function DeployPage() {
                   ) : (
                     <Pause size={16} />
                   )}
-                  Pause
+                  Pause Project
                 </button>
               )}
 
@@ -867,7 +947,7 @@ export default function DeployPage() {
                   ) : (
                     <Play size={16} />
                   )}
-                  Resume
+                  Resume Project
                 </button>
               )}
 
@@ -880,6 +960,19 @@ export default function DeployPage() {
                   Resuming...
                 </button>
               )}
+
+              <button
+                onClick={deleteDeployment}
+                disabled={actionLoading || deploying}
+                className="flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm font-medium text-red-400 transition hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-40"
+              >
+                {actionLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
+                Delete Deployment
+              </button>
             </div>
 
             {/* Technical Information */}

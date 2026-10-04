@@ -494,12 +494,32 @@ export class RuntimeService implements OnModuleInit {
     const cachedNodeModules = path.join(cacheDir, 'node_modules');
     const projectNodeModules = path.join(projectPath, 'node_modules');
 
-    if (fs.existsSync(cachedNodeModules)) {
-      if (!fs.existsSync(projectNodeModules)) {
-        fs.mkdirSync(projectPath, { recursive: true });
-        fs.cpSync(cachedNodeModules, projectNodeModules, { recursive: true, force: true });
+    const isValidCache = (dir: string): boolean => {
+      try {
+        if (!fs.existsSync(dir)) return false;
+        const entries = fs.readdirSync(dir).filter((e) => e !== '.bin' && !e.startsWith('.'));
+        if (entries.length < 2) return false;
+        if (detection.type === 'nextjs' && !fs.existsSync(path.join(dir, 'next'))) {
+          return false;
+        }
+        return true;
+      } catch {
+        return false;
       }
-      return { shouldInstall: false, cacheDir, reused: true };
+    };
+
+    if (fs.existsSync(cachedNodeModules)) {
+      if (isValidCache(cachedNodeModules)) {
+        if (!fs.existsSync(projectNodeModules)) {
+          fs.mkdirSync(projectPath, { recursive: true });
+          fs.cpSync(cachedNodeModules, projectNodeModules, { recursive: true, force: true });
+        }
+        return { shouldInstall: false, cacheDir, reused: true };
+      } else {
+        try {
+          fs.rmSync(cachedNodeModules, { recursive: true, force: true });
+        } catch {}
+      }
     }
 
     return { shouldInstall: true, cacheDir, reused: false };
@@ -519,6 +539,16 @@ export class RuntimeService implements OnModuleInit {
       return;
     }
 
+    try {
+      const entries = fs.readdirSync(projectNodeModules).filter((e) => e !== '.bin' && !e.startsWith('.'));
+      if (entries.length < 2) return;
+      if (detection.type === 'nextjs' && !fs.existsSync(path.join(projectNodeModules, 'next'))) {
+        return;
+      }
+    } catch {
+      return;
+    }
+
     const cacheNodeModules = path.join(cacheState.cacheDir, 'node_modules');
     fs.mkdirSync(cacheState.cacheDir, { recursive: true });
     fs.cpSync(projectNodeModules, cacheNodeModules, { recursive: true, force: true });
@@ -530,10 +560,19 @@ export class RuntimeService implements OnModuleInit {
   ): string[] {
     const commands: string[] = [];
 
-    if (detection.installCommand && !skipInstall) {
-      commands.push(
-        `echo "[Deploy] Dependencies start" && start=$(date +%s) && ${detection.installCommand} && end=$(date +%s) && echo "[Deploy] Dependencies: $((end-start))s"`,
-      );
+    if (detection.installCommand) {
+      if (!skipInstall) {
+        commands.push(
+          `echo "[Deploy] Dependencies start" && start=$(date +%s) && ${detection.installCommand} && end=$(date +%s) && echo "[Deploy] Dependencies: $((end-start))s"`,
+        );
+      } else {
+        const guard = detection.type === 'nextjs'
+          ? '[ ! -d "node_modules/next" ]'
+          : '[ ! -d "node_modules" ]';
+        commands.push(
+          `if ${guard}; then echo "[Deploy] Dependencies missing in container, installing..." && ${detection.installCommand}; fi`,
+        );
+      }
     }
 
     if (detection.buildCommand) {
