@@ -2,7 +2,7 @@
 ; Packages the standalone Agent, bundled Node.js runtime, and dependencies for Windows.
 
 #define MyAppName "DeployX Agent"
-#define MyAppVersion "0.1.1"
+#define MyAppVersion "0.1.2"
 #define MyAppPublisher "DeployX"
 #define MyAppURL "https://deploy-x-virid.vercel.app"
 #define MyAppExeName "DeployX-Agent.bat"

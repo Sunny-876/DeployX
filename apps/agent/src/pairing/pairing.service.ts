@@ -12,7 +12,7 @@ import { resolveApiUrl } from '../config/agent-config';
 export class PairingService implements OnModuleInit {
   private readonly logger = new Logger('PairingService');
   private readonly apiUrl = resolveApiUrl();
-  private readonly version = '0.1.0';
+  private readonly version = '0.1.2';
   private timer: NodeJS.Timeout | null = null;
   private syncing = false;
 

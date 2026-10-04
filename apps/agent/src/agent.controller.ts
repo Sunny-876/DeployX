@@ -44,7 +44,7 @@ export class AgentController {
       this.pairing.getStatus().catch(() => ({})),
       this.runtimeService.status().catch(() => ({})),
     ]);
-    return renderAgentOnboardingHtml(agentStatus, dockerStatus);
+    return renderAgentOnboardingHtml(agentStatus, dockerStatus, '0.1.2');
   }
 
   @Get('info')
@@ -52,7 +52,7 @@ export class AgentController {
     return {
       name: 'DeployX Agent',
       status: 'running',
-      version: '0.1.0',
+      version: '0.1.2',
     };
   }
 

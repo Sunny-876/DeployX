@@ -79,6 +79,8 @@ function candidateConfigPaths(): string[] {
     path.resolve(process.cwd(), '.env'),
     path.resolve(process.cwd(), 'apps', 'agent', 'config.json'),
     path.resolve(process.cwd(), 'apps', 'agent', '.env'),
+    path.resolve(path.dirname(process.execPath), 'config.json'),
+    path.resolve(path.dirname(process.execPath), '.env'),
   ];
   paths.push(...cwdCandidates);
 
@@ -87,6 +89,8 @@ function candidateConfigPaths(): string[] {
     paths.push(path.join(appData, 'DeployX', 'config.json'));
     paths.push(path.join(appData, 'DeployX', '.env'));
     paths.push(path.join(os.homedir(), 'AppData', 'Local', 'DeployX', 'config.json'));
+    paths.push(path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'DeployX Agent', 'config.json'));
+    paths.push(path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'DeployX Agent', '.env'));
   } else {
     paths.push(path.join(os.homedir(), '.deployx', 'config.json'));
     paths.push(path.join(os.homedir(), '.deployx', '.env'));
@@ -135,11 +139,17 @@ export function loadAgentConfig(): { configPath: string; config: AgentRuntimeCon
   return { configPath: configFilePath, config: finalConfig };
 }
 
-export function resolveApiUrl(defaultValue = 'http://localhost:4000'): string {
+export function resolveApiUrl(defaultValue?: string): string {
+  const fallback =
+    defaultValue ||
+    (process.env.NODE_ENV === 'production' || !fs.existsSync(path.resolve(process.cwd(), 'tsconfig.json'))
+      ? 'https://deployx-lfl1.onrender.com'
+      : 'http://localhost:4000');
+
   return String(
     process.env.DEPLOYX_API_URL ||
       process.env.API_URL ||
       loadAgentConfig().config.DEPLOYX_API_URL ||
-      defaultValue,
+      fallback,
   );
 }

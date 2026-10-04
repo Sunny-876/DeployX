@@ -7,6 +7,7 @@ const agentDir = path.resolve(import.meta.dirname, '..');
 const repoRoot = path.resolve(agentDir, '../..');
 const stagingDir = path.join(agentDir, 'package-staging');
 const releasesDir = path.join(repoRoot, 'releases');
+const agentVersion = '0.1.2';
 
 console.log('[1/7] Building DeployX Agent TypeScript bundle...');
 execSync('pnpm --filter agent build', { cwd: repoRoot, stdio: 'inherit' });
@@ -23,7 +24,7 @@ fs.cpSync(distSource, distTarget, { recursive: true, force: true });
 // Copy package.json with production dependencies
 const prodPackageJson = {
   name: 'deployx-agent',
-  version: '0.1.1',
+  version: agentVersion,
   private: true,
   main: 'dist/main.js',
   dependencies: {
@@ -121,7 +122,7 @@ const issPath = path.join(agentDir, 'installer', 'DeployX-Agent.iss');
 console.log('[7/7] Compiling Windows installer with Inno Setup...');
 execSync(`"${isccPath}" "${issPath}"`, { cwd: path.join(agentDir, 'installer'), stdio: 'inherit' });
 
-const outputInstaller = path.join(releasesDir, 'DeployX-Agent-Setup-0.1.1.exe');
+const outputInstaller = path.join(releasesDir, `DeployX-Agent-Setup-${agentVersion}.exe`);
 if (!fs.existsSync(outputInstaller)) {
   throw new Error(`Expected installer was not generated at: ${outputInstaller}`);
 }
@@ -130,7 +131,7 @@ const stats = fs.statSync(outputInstaller);
 const fileBuffer = fs.readFileSync(outputInstaller);
 const sha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex');
 
-const checksumLine = `${sha256}  DeployX-Agent-Setup-0.1.1.exe\n`;
+const checksumLine = `${sha256}  DeployX-Agent-Setup-${agentVersion}.exe\n`;
 fs.appendFileSync(path.join(releasesDir, 'checksums.txt'), checksumLine);
 
 console.log('\n==================================================');

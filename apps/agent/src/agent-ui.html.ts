@@ -1,4 +1,4 @@
-export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any): string {
+export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any, agentVersion = '0.1.2'): string {
   const safeInitialState = JSON.stringify({
     agent: initialAgent || {},
     docker: initialDocker || {},
@@ -176,7 +176,7 @@ export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any)
         </div>
         <div class="brand-line">
           <h1>DeployX Agent</h1>
-          <span class="version">Version 0.1.0</span>
+          <span class="version">Version ${agentVersion}</span>
         </div>
       </div>
 
@@ -206,7 +206,17 @@ export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any)
       ` : `
         <div class="form-group">
           <label for="pairing-code">Pairing code</label>
-          <input id="pairing-code" type="text" maxlength="12" placeholder="123456" autocomplete="one-time-code" onkeydown="if(event.key==='Enter') connectAgent()" />
+          <input
+            id="pairing-code"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="16"
+            placeholder="123456"
+            autocomplete="one-time-code"
+            oninput="handleCodeInput(this)"
+            onkeydown="if(event.key==='Enter') connectAgent()"
+          />
         </div>
         <button id="connect-button" type="button" onclick="connectAgent()">Connect Account</button>
       `}
@@ -226,6 +236,18 @@ export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any)
         box.textContent = text || '';
       }
 
+      function handleCodeInput(input) {
+        if (!input) return;
+        const cleaned = (input.value || '').replace(/[^0-9]/g, '').slice(0, 6);
+        if (input.value !== cleaned) {
+          input.value = cleaned;
+        }
+        const box = document.getElementById('msg-box');
+        if (box && box.className.includes('error')) {
+          box.style.display = 'none';
+        }
+      }
+
       async function fetchStatus() {
         try {
           const [agentResponse, dockerResponse] = await Promise.all([
@@ -242,10 +264,10 @@ export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any)
 
       async function connectAgent() {
         const input = document.getElementById('pairing-code');
-        const code = (input && input.value || '').replace(/\D/g, '').trim();
+        const code = (input && input.value || '').replace(/[^0-9]/g, '').trim();
         const button = document.getElementById('connect-button');
 
-        if (!/^\d{6}$/.test(code)) {
+        if (code.length !== 6 || !/^[0-9]{6}$/.test(code)) {
           setMessage('Please enter a valid six-digit pairing code.', 'error');
           return;
         }

@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Cpu, Download, ExternalLink, ShieldCheck } from 'lucide-react';
 
-const DOWNLOAD_URL = 'https://github.com/Sunny-876/DeployX/releases/download/v0.1.1/DeployX-Agent-Setup-0.1.1.exe';
-const RELEASE_NOTES_URL = 'https://github.com/Sunny-876/DeployX/releases/tag/v0.1.1';
+const DOWNLOAD_URL = 'https://github.com/Sunny-876/DeployX/releases/download/v0.1.2/DeployX-Agent-Setup-0.1.2.exe';
+const RELEASE_NOTES_URL = 'https://github.com/Sunny-876/DeployX/releases/tag/v0.1.2';
 
 export default function DownloadPage() {
   return (
@@ -33,10 +33,10 @@ export default function DownloadPage() {
               <div>
                 <div className="flex items-center gap-2 font-semibold text-white">
                   <Download size={18} className="text-emerald-400" />
-                  DeployX Agent v0.1.1
+                  DeployX Agent v0.1.2
                 </div>
                 <p className="mt-1 text-xs text-zinc-400">
-                  Standalone Windows installer (40.6 MB) • Built with Inno Setup • SHA-256 verified
+                  Standalone Windows installer • Built with Inno Setup • SHA-256 verified
                 </p>
                 <div className="mt-2.5">
                   <a
