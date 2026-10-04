@@ -6,13 +6,23 @@ import {
 @Injectable()
 export class AgentService {
   readonly agentUrl =
-    process.env.AGENT_URL ||
-    'http://localhost:4100';
+    process.env.NODE_ENV === 'production'
+      ? null
+      : process.env.AGENT_URL?.trim() || 'http://localhost:4100';
+
+  private getAgentUrl(): string {
+    if (!this.agentUrl) {
+      throw new ServiceUnavailableException(
+        'AGENT_URL is not configured. Direct Agent access is for local development; production Agents connect through authenticated pairing.',
+      );
+    }
+    return this.agentUrl;
+  }
 
   async health() {
     try {
       const response = await fetch(
-        `${this.agentUrl}/health`,
+        `${this.getAgentUrl()}/health`,
         { signal: AbortSignal.timeout(5000) },
       );
 
@@ -33,7 +43,7 @@ export class AgentService {
   async getInfo() {
     try {
       const response = await fetch(
-        this.agentUrl,
+        this.getAgentUrl(),
         { signal: AbortSignal.timeout(5000) },
       );
 
@@ -62,7 +72,7 @@ export class AgentService {
   ) {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/deploy`,
+        `${this.getAgentUrl()}/agent/deploy`,
         {
           method: 'POST',
 
@@ -108,7 +118,7 @@ export class AgentService {
   async getDeployment(deploymentId: string) {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/deployments/${deploymentId}`,
+        `${this.getAgentUrl()}/agent/deployments/${deploymentId}`,
         {
           cache: 'no-store',
           signal: AbortSignal.timeout(10000),
@@ -138,7 +148,7 @@ export class AgentService {
   async getDeploymentLogs(deploymentId: string) {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/deployments/${deploymentId}/logs`,
+        `${this.getAgentUrl()}/agent/deployments/${deploymentId}/logs`,
         {
           cache: 'no-store',
           signal: AbortSignal.timeout(10000),
@@ -172,7 +182,7 @@ export class AgentService {
   async pauseDeployment(deploymentId: string) {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/deployments/${deploymentId}/pause`,
+        `${this.getAgentUrl()}/agent/deployments/${deploymentId}/pause`,
         {
           method: 'POST',
           signal: AbortSignal.timeout(15000),
@@ -202,7 +212,7 @@ export class AgentService {
   async resumeDeployment(deploymentId: string) {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/deployments/${deploymentId}/resume`,
+        `${this.getAgentUrl()}/agent/deployments/${deploymentId}/resume`,
         {
           method: 'POST',
           // Resuming container and creating a new Cloudflare tunnel takes 8-10 seconds
@@ -233,7 +243,7 @@ export class AgentService {
   async getAllDeployments(): Promise<any[]> {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/deployments`,
+        `${this.getAgentUrl()}/agent/deployments`,
         {
           cache: 'no-store',
           signal: AbortSignal.timeout(5000),
@@ -253,7 +263,7 @@ export class AgentService {
   async cancelDeployment(deploymentId: string) {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/deployments/${deploymentId}/cancel`,
+        `${this.getAgentUrl()}/agent/deployments/${deploymentId}/cancel`,
         {
           method: 'POST',
           signal: AbortSignal.timeout(15000),
@@ -278,7 +288,7 @@ export class AgentService {
   async deleteDeployment(deploymentId: string) {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/deployments/${deploymentId}`,
+        `${this.getAgentUrl()}/agent/deployments/${deploymentId}`,
         {
           method: 'DELETE',
           signal: AbortSignal.timeout(30000),
@@ -307,7 +317,7 @@ export class AgentService {
   }> {
     try {
       const response = await fetch(
-        `${this.agentUrl}/agent/runtime/managed`,
+        `${this.getAgentUrl()}/agent/runtime/managed`,
         {
           cache: 'no-store',
           signal: AbortSignal.timeout(4000),
@@ -330,4 +340,3 @@ export class AgentService {
     }
   }
 }
-

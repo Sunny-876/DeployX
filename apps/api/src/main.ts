@@ -4,8 +4,14 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module.js';
 import { RateLimitMiddleware } from './common/rate-limit.middleware.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
+import {
+  getApiPort,
+  getCorsAllowedOrigins,
+  getJwtSecret,
+} from './config/environment.js';
 
 async function bootstrap() {
+  getJwtSecret();
   const app = await NestFactory.create(AppModule);
 
   // Security Headers Middleware
@@ -28,10 +34,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Strict CORS configuration
-  const rawOrigins = process.env.CORS_ALLOWED_ORIGINS || process.env.CORS_ORIGINS;
-  const allowedOrigins = rawOrigins
-    ? rawOrigins.split(',').map((o) => o.trim())
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  const allowedOrigins = getCorsAllowedOrigins();
 
   app.enableCors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -51,7 +54,7 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
 
-  const port = Number(process.env.PORT) || Number(process.env.API_PORT) || 4000;
+  const port = getApiPort();
   await app.listen(port, '0.0.0.0');
   console.log(`DeployX API running on http://0.0.0.0:${port}`);
 }

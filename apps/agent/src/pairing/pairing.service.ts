@@ -28,6 +28,7 @@ export class PairingService implements OnModuleInit {
     });
 
     this.startHeartbeatLoop();
+    this.startCommandPollLoop();
   }
 
   private identity() {
@@ -276,5 +277,113 @@ export class PairingService implements OnModuleInit {
     }, 2000);
     this.timer = setInterval(() => void this.sendHeartbeat(false), intervalMs);
     if (typeof this.timer.unref === 'function') this.timer.unref();
+  }
+
+  private commandPollTimer: NodeJS.Timeout | null = null;
+
+  private startCommandPollLoop() {
+    if (this.commandPollTimer) clearInterval(this.commandPollTimer);
+    setTimeout(() => {
+      void this.pollAndExecuteCommands();
+    }, 1500);
+    this.commandPollTimer = setInterval(() => void this.pollAndExecuteCommands(), 3000);
+    if (typeof this.commandPollTimer.unref === 'function') this.commandPollTimer.unref();
+  }
+
+  private async pollAndExecuteCommands() {
+    const identity = this.identity();
+    if (!identity?.agentToken) return;
+
+    try {
+      const response = await fetch(`${this.apiUrl}/agents/commands/poll`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${identity.agentToken}`,
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json().catch(() => null);
+      const command = data?.command;
+      if (!command) return;
+
+      this.logger.log(`Received command ${command.type} (id: ${command.id})`);
+      await this.executeCommand(command, identity.agentToken);
+    } catch {
+      // transient network or API unavailable, silently poll again next interval
+    }
+  }
+
+  private async executeCommand(
+    command: { id: string; type: string; payload: any },
+    agentToken: string,
+  ) {
+    let status: 'SUCCEEDED' | 'FAILED' = 'SUCCEEDED';
+    let result: any = null;
+    let error: string | undefined;
+
+    try {
+      const payload = command.payload || {};
+      const deploymentId = payload.deploymentId || payload.agentDeploymentId;
+
+      switch (command.type) {
+        case 'PAUSE': {
+          if (!deploymentId) throw new Error('deploymentId required for PAUSE');
+          result = await this.manager.pause(deploymentId);
+          break;
+        }
+        case 'RESUME': {
+          if (!deploymentId) throw new Error('deploymentId required for RESUME');
+          result = await this.manager.resume(deploymentId);
+          break;
+        }
+        case 'DELETE': {
+          if (!deploymentId) throw new Error('deploymentId required for DELETE');
+          result = await this.manager.remove(deploymentId);
+          break;
+        }
+        case 'STATUS': {
+          result = await this.runtime.status();
+          break;
+        }
+        case 'DEPLOY': {
+          const deployId = payload.deploymentId || payload.id || `deploy-${Date.now()}`;
+          const projPath = payload.projectPath || '.';
+          result = await this.manager.deploy(deployId, projPath, {
+            projectId: payload.projectId,
+            userId: payload.userId,
+            projectName: payload.projectName,
+          });
+          break;
+        }
+        default: {
+          throw new Error(`Unsupported command type: ${command.type}`);
+        }
+      }
+    } catch (err: any) {
+      status = 'FAILED';
+      error = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Command ${command.id} (${command.type}) failed: ${error}`);
+    }
+
+    try {
+      await fetch(`${this.apiUrl}/agents/commands/${command.id}/result`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${agentToken}`,
+        },
+        body: JSON.stringify({ status, result, error }),
+        signal: AbortSignal.timeout(10000),
+      });
+      this.logger.log(`Reported result for command ${command.id}: ${status}`);
+    } catch (err) {
+      this.logger.error(`Failed to report result for command ${command.id}: ${err}`);
+    }
+
+    void this.syncRuntime().catch(() => {});
   }
 }

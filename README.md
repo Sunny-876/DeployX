@@ -92,7 +92,7 @@ Copy `.env.example` to configure your environment:
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `DATABASE_URL` | `postgresql://...` | PostgreSQL connection string |
-| `JWT_SECRET` | `deployx-jwt-...` | Secret for signing user authentication tokens |
+| `JWT_SECRET` | Set in environment | Secret for signing user authentication tokens |
 | `API_PORT` | `4000` | Port for the API server |
 | `AGENT_PORT` | `4100` | Port for the local Agent daemon |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins |

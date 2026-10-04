@@ -22,6 +22,22 @@ enum DeploymentStatus {
   FAILED
 }
 
+enum CommandType {
+  DEPLOY
+  PAUSE
+  RESUME
+  DELETE
+  STATUS
+}
+
+enum CommandStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  REJECTED
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -37,6 +53,7 @@ model User {
   projects     Project[]
   agents       Agent[]
   pairings     AgentPairing[]
+  commands     AgentCommand[]
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -118,6 +135,7 @@ model Agent {
   lastSeenAt DateTime?
 
   deployments Deployment[]
+  commands    AgentCommand[]
 
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
@@ -136,5 +154,26 @@ model AgentPairing {
 
   createdAt DateTime @default(now())
 
+  @@index([userId])
+}
+
+model AgentCommand {
+  id          String        @id @default(cuid())
+  agentId     String
+  userId      String
+  type        CommandType
+  status      CommandStatus @default(PENDING)
+  payload     Json?
+  result      Json?
+  error       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  agent       Agent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, status])
   @@index([userId])
 }

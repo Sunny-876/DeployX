@@ -29,6 +29,11 @@ Dashboard (Vercel)
 ```
 
 The **API never executes student code**. All builds run inside Docker on your PC.
+Agents connect outbound to the API using their authenticated pairing token and
+heartbeat/runtime-sync endpoints. The API does not connect to a student's
+`localhost:4100`. `AGENT_URL=http://localhost:4100` is only for legacy direct
+Agent calls during local development when the API and Agent share a machine;
+do not set it as a production route to a student's Agent.
 
 ---
 

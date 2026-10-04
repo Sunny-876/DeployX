@@ -412,6 +412,33 @@ export class DeploymentService {
     const details = await this.getDeploymentDetails(id, userId);
     const agentDeploymentId = details.agentDeploymentId;
 
+    const targetAgentId =
+      details.agentId ||
+      (userId ? (await this.agents.onlineAgentForUser(userId))?.id : null);
+
+    if (targetAgentId) {
+      await this.agents.queueAndAwaitCommand(
+        targetAgentId,
+        details.project.userId,
+        'PAUSE',
+        { deploymentId: details.id, agentDeploymentId },
+        6000,
+      );
+      const refreshed = await this.prisma.deployment.findUnique({
+        where: { id: details.id },
+      });
+      return {
+        id: details.id,
+        agentDeploymentId,
+        status: refreshed?.status || 'PAUSED',
+        url: null,
+        localUrl: null,
+        port: refreshed?.port ?? details.port ?? null,
+        containerId: refreshed?.containerId ?? details.containerId ?? null,
+        logs: details.logs || [],
+      };
+    }
+
     const paused = await this.agent.pauseDeployment(agentDeploymentId);
 
     const status = toRuntimeStatus(paused?.status) || 'PAUSED';
@@ -450,6 +477,33 @@ export class DeploymentService {
   async resumeDeployment(id: string, userId?: string) {
     const details = await this.getDeploymentDetails(id, userId);
     const agentDeploymentId = details.agentDeploymentId;
+
+    const targetAgentId =
+      details.agentId ||
+      (userId ? (await this.agents.onlineAgentForUser(userId))?.id : null);
+
+    if (targetAgentId) {
+      await this.agents.queueAndAwaitCommand(
+        targetAgentId,
+        details.project.userId,
+        'RESUME',
+        { deploymentId: details.id, agentDeploymentId },
+        8000,
+      );
+      const refreshed = await this.prisma.deployment.findUnique({
+        where: { id: details.id },
+      });
+      return {
+        id: details.id,
+        agentDeploymentId,
+        status: refreshed?.status || 'RUNNING',
+        url: refreshed?.url || null,
+        localUrl: refreshed?.port ? `http://localhost:${refreshed.port}` : null,
+        port: refreshed?.port ?? details.port ?? null,
+        containerId: refreshed?.containerId ?? details.containerId ?? null,
+        logs: details.logs || [],
+      };
+    }
 
     const resumed = await this.agent.resumeDeployment(agentDeploymentId);
 
@@ -606,6 +660,7 @@ export class DeploymentService {
       containerId: liveMatch?.containerId ?? deployment.containerId ?? null,
       containerName: liveMatch?.containerName ?? deployment.containerName ?? null,
       agentDeploymentId: deployment.commitHash || deployment.id,
+      agentId: deployment.agentId ?? null,
       lastSyncedAt: deployment.lastSyncedAt,
       createdAt: deployment.createdAt,
       updatedAt: deployment.updatedAt,
@@ -636,10 +691,25 @@ export class DeploymentService {
 
     const agentDeploymentId = deployment.commitHash || deployment.id;
 
+    const targetAgentId =
+      deployment.agentId ||
+      (userId ? (await this.agents.onlineAgentForUser(userId))?.id : null);
+
     // Clean up runtime resources on Agent (stop tunnel, remove docker container)
-    try {
-      await this.agent.deleteDeployment(agentDeploymentId);
-    } catch {}
+    if (targetAgentId) {
+      try {
+        await this.agents.queueCommand({
+          agentId: targetAgentId,
+          userId: deployment.project?.userId || userId!,
+          type: 'DELETE',
+          payload: { deploymentId: deployment.id, agentDeploymentId },
+        });
+      } catch {}
+    } else {
+      try {
+        await this.agent.deleteDeployment(agentDeploymentId);
+      } catch {}
+    }
 
     // Clean up stored build artifacts if any
     try {

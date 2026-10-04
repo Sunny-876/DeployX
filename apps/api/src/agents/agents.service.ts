@@ -444,4 +444,189 @@ export class AgentsService {
     }
     return agent;
   }
+
+  async queueCommand(params: {
+    agentId: string;
+    userId: string;
+    type: 'DEPLOY' | 'PAUSE' | 'RESUME' | 'DELETE' | 'STATUS';
+    payload?: any;
+  }) {
+    const agent = await this.prisma.agent.findUnique({
+      where: { id: params.agentId },
+    });
+    if (!agent || agent.revokedAt) {
+      throw new NotFoundException('Agent not found or has been revoked');
+    }
+    if (agent.userId !== params.userId) {
+      throw new ForbiddenException('Agent does not belong to your account');
+    }
+
+    return this.prisma.agentCommand.create({
+      data: {
+        agentId: params.agentId,
+        userId: params.userId,
+        type: params.type,
+        status: 'PENDING',
+        payload: params.payload ?? {},
+      },
+    });
+  }
+
+  async pollCommand(agentId: string, userId: string) {
+    const agent = await this.prisma.agent.findUnique({
+      where: { id: agentId },
+    });
+    if (!agent || agent.revokedAt) {
+      throw new NotFoundException('Agent not found or revoked');
+    }
+    if (agent.userId !== userId) {
+      throw new ForbiddenException('Agent does not belong to this account');
+    }
+
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: { lastSeenAt: new Date(), status: 'ONLINE' },
+    });
+
+    const pending = await this.prisma.agentCommand.findFirst({
+      where: { agentId, status: 'PENDING' },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (!pending) {
+      return { command: null };
+    }
+
+    const claimed = await this.prisma.agentCommand.update({
+      where: { id: pending.id },
+      data: {
+        status: 'RUNNING',
+        startedAt: new Date(),
+      },
+    });
+
+    return {
+      command: {
+        id: claimed.id,
+        type: claimed.type,
+        payload: claimed.payload,
+        createdAt: claimed.createdAt,
+      },
+    };
+  }
+
+  async reportCommandResult(
+    agentId: string,
+    userId: string,
+    commandId: string,
+    data: {
+      status: 'SUCCEEDED' | 'FAILED' | 'REJECTED';
+      result?: any;
+      error?: string;
+    },
+  ) {
+    const command = await this.prisma.agentCommand.findUnique({
+      where: { id: commandId },
+    });
+    if (!command) {
+      throw new NotFoundException(`Command ${commandId} not found`);
+    }
+    if (command.agentId !== agentId) {
+      throw new ForbiddenException('Command does not belong to this agent');
+    }
+    if (command.userId !== userId) {
+      throw new ForbiddenException('Command does not belong to this account');
+    }
+
+    const updated = await this.prisma.agentCommand.update({
+      where: { id: commandId },
+      data: {
+        status: data.status,
+        result: data.result ?? null,
+        error: data.error ?? null,
+        completedAt: new Date(),
+      },
+    });
+
+    const payload = (command.payload as any) || {};
+    const deploymentId = payload.deploymentId;
+    if (deploymentId) {
+      const now = new Date();
+      if (command.type === 'PAUSE' && data.status === 'SUCCEEDED') {
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: { status: 'PAUSED', url: null, lastSyncedAt: now },
+        }).catch(() => {});
+        await this.prisma.deploymentLog.create({
+          data: { deploymentId, message: 'Deployment paused by Agent' },
+        }).catch(() => {});
+      } else if (command.type === 'RESUME' && data.status === 'SUCCEEDED') {
+        const publicUrl = data.result?.publicUrl || null;
+        const port = data.result?.port ?? null;
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: { status: 'RUNNING', url: publicUrl, port, lastSyncedAt: now },
+        }).catch(() => {});
+        await this.prisma.deploymentLog.create({
+          data: { deploymentId, message: `Deployment resumed by Agent: ${publicUrl || 'local port ' + port}` },
+        }).catch(() => {});
+      } else if (command.type === 'DELETE' && data.status === 'SUCCEEDED') {
+        await this.prisma.deployment.delete({
+          where: { id: deploymentId },
+        }).catch(() => {});
+      } else if (command.type === 'DEPLOY') {
+        if (data.status === 'SUCCEEDED') {
+          const publicUrl = data.result?.publicUrl || null;
+          const port = data.result?.port ?? null;
+          const containerId = data.result?.containerId || null;
+          await this.prisma.deployment.update({
+            where: { id: deploymentId },
+            data: {
+              status: 'RUNNING',
+              url: publicUrl,
+              port,
+              containerId,
+              lastSyncedAt: now,
+            },
+          }).catch(() => {});
+          await this.prisma.deploymentLog.create({
+            data: { deploymentId, message: `Agent deployment ready: ${publicUrl || ''}` },
+          }).catch(() => {});
+        } else {
+          await this.prisma.deployment.update({
+            where: { id: deploymentId },
+            data: { status: 'FAILED', lastSyncedAt: now },
+          }).catch(() => {});
+          await this.prisma.deploymentLog.create({
+            data: { deploymentId, message: `Agent deployment failed: ${data.error || 'Unknown error'}` },
+          }).catch(() => {});
+        }
+      }
+    }
+
+    return updated;
+  }
+
+  async queueAndAwaitCommand(
+    agentId: string,
+    userId: string,
+    type: 'DEPLOY' | 'PAUSE' | 'RESUME' | 'DELETE' | 'STATUS',
+    payload: any,
+    timeoutMs = 8000,
+  ) {
+    const cmd = await this.queueCommand({ agentId, userId, type, payload });
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const latest = await this.prisma.agentCommand.findUnique({
+        where: { id: cmd.id },
+      });
+      if (latest && (latest.status === 'SUCCEEDED' || latest.status === 'FAILED' || latest.status === 'REJECTED')) {
+        return latest;
+      }
+    }
+
+    return cmd;
+  }
 }
