@@ -68,4 +68,18 @@ export class AgentCommandController {
     res.setHeader('Content-Disposition', `attachment; filename="${deploymentId}.zip"`);
     return res.sendFile(archivePath);
   }
+
+  @UseGuards(AgentAuthGuard)
+  @Post(':deploymentId/log')
+  @HttpCode(HttpStatus.OK)
+  async appendLog(
+    @CurrentAgent() agent: AgentRequestUser,
+    @Param('deploymentId') deploymentId: string,
+    @Body() body: { message: string },
+  ) {
+    if (body?.message) {
+      await this.agentsService.appendDeploymentLog(deploymentId, agent.userId, body.message);
+    }
+    return { ok: true };
+  }
 }

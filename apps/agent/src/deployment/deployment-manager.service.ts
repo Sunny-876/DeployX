@@ -237,6 +237,7 @@ export class DeploymentManagerService {
       userId?: string | null;
       projectName?: string | null;
     },
+    externalOnLog?: (line: string) => void,
   ) {
     if (!projectPath) {
       throw new BadRequestException('projectPath is required');
@@ -251,6 +252,11 @@ export class DeploymentManagerService {
     try {
       const onLog = (line: string) => {
         void this.log(deploymentId, line);
+        if (externalOnLog) {
+          try {
+            externalOnLog(line);
+          } catch {}
+        }
       };
 
       // 1. Start Docker runtime (container carries DeployX labels) & wait for health

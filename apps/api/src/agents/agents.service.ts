@@ -658,4 +658,20 @@ export class AgentsService {
     }
     return found;
   }
+
+  async appendDeploymentLog(deploymentId: string, userId: string, message: string): Promise<void> {
+    const deployment = await this.prisma.deployment.findUnique({
+      where: { id: deploymentId },
+      include: { project: true },
+    });
+    if (!deployment || (deployment.project && deployment.project.userId !== userId)) {
+      return;
+    }
+    await this.prisma.deploymentLog.create({
+      data: {
+        deploymentId,
+        message,
+      },
+    }).catch(() => {});
+  }
 }

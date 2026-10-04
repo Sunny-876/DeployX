@@ -364,16 +364,34 @@ export class PairingService implements OnModuleInit {
           const deployId = payload.deploymentId || payload.id || `deploy-${Date.now()}`;
           let projPath = payload.projectPath || '.';
 
+          const sendLog = (message: string) => {
+            fetch(`${this.apiUrl}/agents/commands/${deployId}/log`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${agentToken}`,
+              },
+              body: JSON.stringify({ message }),
+            }).catch(() => {});
+          };
+
           if (payload.archiveUrl && (!fs.existsSync(projPath) || !fs.statSync(projPath).isDirectory())) {
             this.logger.log(`Downloading project archive for deployment ${deployId}...`);
+            sendLog('Downloading project archive to DeployX Agent...');
             projPath = await this.downloadAndExtractArchive(deployId, payload.archiveUrl, agentToken);
+            sendLog('Project archive extracted on local PC.');
           }
 
-          result = await this.manager.deploy(deployId, projPath, {
-            projectId: payload.projectId,
-            userId: payload.userId,
-            projectName: payload.projectName,
-          });
+          result = await this.manager.deploy(
+            deployId,
+            projPath,
+            {
+              projectId: payload.projectId,
+              userId: payload.userId,
+              projectName: payload.projectName,
+            },
+            sendLog,
+          );
           break;
         }
         default: {

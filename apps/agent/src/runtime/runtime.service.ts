@@ -532,13 +532,13 @@ export class RuntimeService implements OnModuleInit {
 
     if (detection.installCommand && !skipInstall) {
       commands.push(
-        `echo "[Deploy] Dependencies start"; start=$(date +%s); ${detection.installCommand}; end=$(date +%s); echo "[Deploy] Dependencies: $((end-start))s";`,
+        `echo "[Deploy] Dependencies start" && start=$(date +%s) && ${detection.installCommand} && end=$(date +%s) && echo "[Deploy] Dependencies: $((end-start))s"`,
       );
     }
 
     if (detection.buildCommand) {
       commands.push(
-        `echo "[Deploy] Build start"; start=$(date +%s); ${detection.buildCommand}; end=$(date +%s); echo "[Deploy] Build: $((end-start))s";`,
+        `echo "[Deploy] Build start" && start=$(date +%s) && ${detection.buildCommand} && end=$(date +%s) && echo "[Deploy] Build: $((end-start))s"`,
       );
     }
 
