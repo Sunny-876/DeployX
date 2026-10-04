@@ -61,6 +61,16 @@ describe('API environment configuration', () => {
         CORS_ALLOWED_ORIGINS: 'https://app.example, https://admin.example',
       }),
     ).toEqual(['https://app.example', 'https://admin.example']);
+    expect(
+      getCorsAllowedOrigins({
+        NODE_ENV: 'production',
+        CORS_ALLOWED_ORIGINS:
+          '"https://deploy-778ps6mh-2006sunnysharma-2001s-projects.vercel.app/", http://localhost:3000',
+      }),
+    ).toEqual([
+      'https://deploy-778ps6mh-2006sunnysharma-2001s-projects.vercel.app',
+      'http://localhost:3000',
+    ]);
   });
 
   it('uses local CORS origins and port defaults only outside production', () => {

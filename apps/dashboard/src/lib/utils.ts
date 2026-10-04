@@ -1,5 +1,6 @@
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, '') ||
+  'http://localhost:4000';
 
 export function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';

@@ -23,9 +23,10 @@ export function getDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function getCorsAllowedOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
-  const configuredOrigins = env.CORS_ALLOWED_ORIGINS
+  const rawOrigins = env.CORS_ALLOWED_ORIGINS || env.CORS_ORIGINS;
+  const configuredOrigins = rawOrigins
     ?.split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/^['"]|['"]$/g, '').replace(/\/+$/, ''))
     .filter(Boolean);
 
   if (configuredOrigins?.includes('*')) {
@@ -36,7 +37,14 @@ export function getCorsAllowedOrigins(env: NodeJS.ProcessEnv = process.env): str
     throw new Error('CORS_ALLOWED_ORIGINS must be configured in production.');
   }
 
-  return configuredOrigins?.length ? configuredOrigins : LOCAL_CORS_ORIGINS;
+  if (configuredOrigins?.length) {
+    if (env.NODE_ENV !== 'production') {
+      return Array.from(new Set([...configuredOrigins, ...LOCAL_CORS_ORIGINS]));
+    }
+    return configuredOrigins;
+  }
+
+  return LOCAL_CORS_ORIGINS;
 }
 
 export function getApiPort(env: NodeJS.ProcessEnv = process.env): number {

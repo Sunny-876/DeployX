@@ -73,7 +73,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(data.user);
       return { success: true };
-    } catch {
+    } catch (err) {
+      console.error('[DeployX Auth] Login request failed:', err);
+      if (
+        typeof window !== 'undefined' &&
+        window.location.protocol === 'https:' &&
+        API_URL.startsWith('http://localhost')
+      ) {
+        return {
+          success: false,
+          error:
+            'Unable to connect to authentication service: NEXT_PUBLIC_API_URL is configured as localhost. Set NEXT_PUBLIC_API_URL in Vercel to your Render API URL and redeploy.',
+        };
+      }
       return {
         success: false,
         error: 'Unable to connect to authentication service',
@@ -101,7 +113,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(data.user);
       return { success: true };
-    } catch {
+    } catch (err) {
+      console.error('[DeployX Auth] Register request failed:', err);
+      if (
+        typeof window !== 'undefined' &&
+        window.location.protocol === 'https:' &&
+        API_URL.startsWith('http://localhost')
+      ) {
+        return {
+          success: false,
+          error:
+            'Unable to connect to registration service: NEXT_PUBLIC_API_URL is configured as localhost. Set NEXT_PUBLIC_API_URL in Vercel to your Render API URL and redeploy.',
+        };
+      }
       return {
         success: false,
         error: 'Unable to connect to registration service',
