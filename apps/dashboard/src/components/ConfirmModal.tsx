@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 interface ConfirmModalProps {
@@ -25,10 +26,27 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isLoading, onCancel]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-desc"
+    >
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
@@ -49,8 +67,10 @@ export function ConfirmModal({
           </div>
 
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-white">{title}</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            <h3 id="confirm-modal-title" className="text-base font-semibold text-white">
+              {title}
+            </h3>
+            <p id="confirm-modal-desc" className="mt-1.5 text-sm leading-relaxed text-zinc-400">
               {description}
             </p>
           </div>

@@ -105,11 +105,11 @@ export default function AdminPage() {
 
   if (loading || fetching) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0b0b0d] text-zinc-400">
+      <main className="flex min-h-screen items-center justify-center bg-[#08090a] text-zinc-400">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-6 w-6 animate-spin text-zinc-300" />
-          <span className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
-            Loading admin console
+          <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+          <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
+            Loading admin console...
           </span>
         </div>
       </main>
@@ -122,24 +122,24 @@ export default function AdminPage() {
 
   if (user.role !== 'ADMIN') {
     return (
-      <main className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-4 py-12">
-        <div className="w-full rounded-3xl border border-red-500/20 bg-red-500/5 p-8 text-center shadow-xl">
-          <div className="mb-4 flex justify-center text-red-400">
-            <Shield className="h-12 w-12" />
+      <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-4 py-12">
+        <div className="w-full rounded-lg border border-rose-500/20 bg-[#0d0f12] p-8 text-center shadow-xl">
+          <div className="mb-4 flex justify-center text-rose-400">
+            <Shield className="h-10 w-10" />
           </div>
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-red-300">
-            Access denied
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Administrator access required</h1>
-          <p className="mt-3 text-sm text-zinc-300">
-            This area is reserved for DeployX operations staff and is blocked for student accounts.
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-rose-400">
+            ACCESS RESTRICTED
+          </span>
+          <h1 className="mt-2 text-xl font-bold text-white">Administrator Access Required</h1>
+          <p className="mt-2 text-xs text-zinc-400 leading-relaxed">
+            This area is restricted to system administrators and operator accounts.
           </p>
           <Link
             href="/dashboard"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-zinc-200"
+            className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition"
           >
-            <ArrowLeft size={16} />
-            Return to dashboard
+            <ArrowLeft size={13} />
+            <span>Return to dashboard</span>
           </Link>
         </div>
       </main>
@@ -148,55 +148,55 @@ export default function AdminPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between border-b border-white/[0.08] pb-6">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
-            Operations
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">Admin Console</h1>
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+            OPERATIONS CONSOLE
+          </span>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">Admin Overview</h1>
         </div>
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#0d0f12] px-3.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-white/20 hover:text-white transition"
         >
-          <ArrowLeft size={16} />
-          Back to dashboard
+          <ArrowLeft size={13} />
+          <span>Back to dashboard</span>
         </Link>
       </div>
 
       {error && (
-        <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-200">
+        <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-200">
           {error}
         </div>
       )}
 
       {!overview ? null : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard icon={<Users className="h-4 w-4" />} label="Users" value={overview.totalUsers} />
             <StatCard icon={<Server className="h-4 w-4" />} label="Agents" value={`${overview.onlineAgents}/${overview.totalAgents}`} />
             <StatCard icon={<Activity className="h-4 w-4" />} label="Active deploys" value={overview.activeDeployments} />
             <StatCard icon={<TriangleAlert className="h-4 w-4" />} label="Stale agents" value={overview.staleAgents} />
           </div>
 
-          <div className="mt-8 grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-            <section className="rounded-2xl border border-white/[0.08] bg-[#111114] p-5 shadow-lg">
+          <div className="mt-6 grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+            <section className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5 shadow-lg">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Recent users</h2>
-                <span className="text-xs text-zinc-500">{overview.recentUsers.length} latest</span>
+                <h2 className="text-sm font-semibold text-white">Recent Users</h2>
+                <span className="font-mono text-[11px] text-zinc-500">{overview.recentUsers.length} total</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {overview.recentUsers.length === 0 ? (
-                  <p className="text-sm text-zinc-500">No users registered yet.</p>
+                  <p className="text-xs text-zinc-500">No users registered yet.</p>
                 ) : (
                   overview.recentUsers.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
+                    <div key={item.id} className="flex items-center justify-between rounded-lg border border-white/[0.04] bg-[#08090a] px-3 py-2 text-xs">
                       <div>
                         <p className="font-medium text-white">{item.name}</p>
-                        <p className="text-xs text-zinc-400">{item.email}</p>
+                        <p className="text-zinc-500 font-mono text-[11px]">{item.email}</p>
                       </div>
-                      <div className="text-right text-xs text-zinc-400">
-                        <div className="font-medium text-zinc-300">{item.role}</div>
+                      <div className="text-right text-[11px] text-zinc-400 font-mono">
+                        <div className="font-semibold text-zinc-300">{item.role}</div>
                         <div>{new Date(item.createdAt).toLocaleDateString()}</div>
                       </div>
                     </div>
@@ -205,44 +205,44 @@ export default function AdminPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-white/[0.08] bg-[#111114] p-5 shadow-lg">
+            <section className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5 shadow-lg">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Health</h2>
-                <span className="text-xs text-zinc-500">Live snapshot</span>
+                <h2 className="text-sm font-semibold text-white">System Health</h2>
+                <span className="font-mono text-[11px] text-zinc-500">Live</span>
               </div>
-              <div className="space-y-3 text-sm">
-                <HealthRow label="Projects" value={overview.totalProjects} />
-                <HealthRow label="Paused" value={overview.pausedDeployments} />
-                <HealthRow label="Failed" value={overview.failedDeployments} />
-                <HealthRow label="Updated" value={new Date(overview.lastUpdatedAt).toLocaleTimeString()} />
+              <div className="space-y-2 text-xs">
+                <HealthRow label="Total Projects" value={overview.totalProjects} />
+                <HealthRow label="Paused Deploys" value={overview.pausedDeployments} />
+                <HealthRow label="Failed Deploys" value={overview.failedDeployments} />
+                <HealthRow label="Last Telemetry Sync" value={new Date(overview.lastUpdatedAt).toLocaleTimeString()} />
               </div>
             </section>
           </div>
 
-          <section className="mt-8 rounded-2xl border border-white/[0.08] bg-[#111114] p-5 shadow-lg">
+          <section className="mt-6 rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Latest deployments</h2>
-              <span className="text-xs text-zinc-500">Read-only status</span>
+              <h2 className="text-sm font-semibold text-white">Latest Deployments</h2>
+              <span className="font-mono text-[11px] text-zinc-500">Global</span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {overview.recentDeployments.length === 0 ? (
-                <p className="text-sm text-zinc-500">No deployments have been reported yet.</p>
+                <p className="text-xs text-zinc-500">No deployments reported yet.</p>
               ) : (
                 overview.recentDeployments.map((deployment) => (
-                  <div key={deployment.id} className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
+                  <div key={deployment.id} className="rounded-lg border border-white/[0.04] bg-[#08090a] p-3 text-xs">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-medium text-white">{deployment.projectName}</p>
-                        <p className="text-xs text-zinc-400">{deployment.ownerName} · {deployment.ownerEmail}</p>
+                        <p className="text-zinc-500 text-[11px]">{deployment.ownerName} · {deployment.ownerEmail}</p>
                       </div>
-                      <span className="rounded-full border border-white/10 bg-white/[0.02] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-300">
+                      <span className="rounded bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] uppercase text-zinc-300">
                         {deployment.status}
                       </span>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-mono text-zinc-400">
                       <span>Agent: {deployment.agentName}</span>
                       <span>•</span>
-                      <span>{deployment.url ? deployment.url : 'No public URL'}</span>
+                      <span className="text-zinc-500">{deployment.url ? deployment.url : 'No public URL'}</span>
                     </div>
                   </div>
                 ))
@@ -250,20 +250,20 @@ export default function AdminPage() {
             </div>
           </section>
 
-          <section className="mt-8 rounded-2xl border border-white/[0.08] bg-[#111114] p-5 shadow-lg">
+          <section className="mt-6 rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Recent deployment logs</h2>
-              <span className="text-xs text-zinc-500">Last 8 entries</span>
+              <h2 className="text-sm font-semibold text-white">Recent Deployment Activity</h2>
+              <span className="font-mono text-[11px] text-zinc-500">Latest 8 entries</span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {overview.recentLogs.length === 0 ? (
-                <p className="text-sm text-zinc-500">No deployment logs recorded.</p>
+                <p className="text-xs text-zinc-500">No deployment logs recorded.</p>
               ) : (
                 overview.recentLogs.map((log) => (
-                  <div key={log.id} className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2 text-sm text-zinc-300">
+                  <div key={log.id} className="rounded-lg border border-white/[0.04] bg-[#08090a] p-3 text-xs text-zinc-300">
                     <p className="font-medium text-white">{log.projectName}</p>
-                    <p className="mt-1 text-zinc-400">{log.message}</p>
-                    <div className="mt-2 text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                    <p className="mt-1 text-zinc-400 font-mono text-[11px]">{log.message}</p>
+                    <div className="mt-1.5 font-mono text-[10px] uppercase text-zinc-500">
                       {log.deploymentStatus} · {new Date(log.createdAt).toLocaleString()}
                     </div>
                   </div>
@@ -287,21 +287,21 @@ function StatCard({
   value: number | string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[#111114] p-5 shadow-lg">
+    <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-4">
       <div className="flex items-center justify-between text-zinc-400">
-        <span className="text-xs font-medium uppercase tracking-[0.16em]">{label}</span>
+        <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">{label}</span>
         <div className="text-zinc-500">{icon}</div>
       </div>
-      <div className="mt-4 text-3xl font-bold tracking-tight text-white">{value}</div>
+      <div className="mt-2 text-2xl font-bold tracking-tight text-white">{value}</div>
     </div>
   );
 }
 
 function HealthRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
+    <div className="flex items-center justify-between rounded-lg border border-white/[0.04] bg-[#08090a] px-3 py-2">
       <span className="text-zinc-400">{label}</span>
-      <span className="font-medium text-white">{value}</span>
+      <span className="font-mono text-zinc-200">{value}</span>
     </div>
   );
 }

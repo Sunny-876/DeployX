@@ -50,6 +50,8 @@ export function StatusBadge({
       ? 'px-3.5 py-1.5 text-sm gap-2.5 font-medium'
       : 'px-2.5 py-1 text-xs gap-2 font-medium';
 
+  const displayLabel = normalized === 'READY' ? 'LIVE' : normalized;
+
   return (
     <span
       className={`inline-flex items-center rounded-full border tracking-wide uppercase font-mono ${colorClasses} ${sizeClasses}`}
@@ -66,7 +68,7 @@ export function StatusBadge({
           }`}
         />
       )}
-      <span>{normalized}</span>
+      <span>{displayLabel}</span>
     </span>
   );
 }

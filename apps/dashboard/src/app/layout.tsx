@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DeployX — Deployment History & Project Management",
-  description: "Deploy, manage, and monitor containerized web projects with instant Cloudflare Quick Tunnels.",
+  title: "DeployX — Personal Cloud for Developers",
+  description: "Deploy and run containerized projects from your own computer with instant temporary public URLs.",
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-[#0b0b0d] text-white">
+      <body className="min-h-full flex flex-col bg-[#08090a] text-[#ededef]">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

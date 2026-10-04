@@ -118,6 +118,18 @@ export function AgentCard() {
   const ss = String(secondsLeft % 60).padStart(2, '0');
 
   const agentName = primary?.hostname || primary?.name || (online ? 'My PC' : 'No agent connected');
+  const agentVersion = primary?.version || (online ? 'v0.1.2' : null);
+
+  // Determine current status state
+  const stateLabel = loading
+    ? 'CONNECTING'
+    : online
+    ? 'CONNECTED'
+    : pairing
+    ? 'PAIRING'
+    : primary
+    ? 'OFFLINE'
+    : 'NOT CONNECTED';
 
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-[#111114] p-5 shadow-lg">
@@ -129,7 +141,7 @@ export function AgentCard() {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">Agent</h3>
-            <p className="font-mono text-xs text-zinc-400 truncate max-w-[180px]">
+            <p className="font-mono text-xs text-zinc-400 truncate max-w-[170px]">
               {agentName}
             </p>
           </div>
@@ -143,19 +155,21 @@ export function AgentCard() {
         </button>
       </div>
 
-      {/* Online / Offline Status Badge */}
+      {/* State Badge */}
       <div className="mt-4 flex items-center gap-2">
         <span
           className={`h-2.5 w-2.5 rounded-full ${
             loading
-              ? 'bg-zinc-600'
+              ? 'bg-zinc-600 animate-pulse'
               : online
               ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)] animate-pulse'
+              : pairing
+              ? 'bg-amber-400 animate-pulse'
               : 'border border-zinc-500 bg-transparent'
           }`}
         />
-        <span className="font-mono text-xs font-medium text-zinc-200">
-          {loading ? 'Checking...' : online ? 'Online' : 'Offline'}
+        <span className="font-mono text-xs font-medium text-zinc-200 uppercase tracking-wide">
+          {stateLabel}
         </span>
       </div>
 
@@ -172,11 +186,29 @@ export function AgentCard() {
               </span>
             </div>
             <div className="flex items-center justify-between py-2.5">
-              <span className="text-zinc-400">Projects</span>
-              <span className="font-mono font-medium text-white">
-                {projectCount !== null ? projectCount : '1'}
+              <span className="text-zinc-400">Machine</span>
+              <span className="font-mono font-medium text-white truncate max-w-[140px]" title={agentName}>
+                {agentName}
               </span>
             </div>
+            {agentVersion && (
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-zinc-400">Version</span>
+                <span className="font-mono text-zinc-300">{agentVersion}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between py-2.5">
+              <span className="text-zinc-400">Active Projects</span>
+              <span className="font-mono font-medium text-white">
+                {projectCount !== null ? projectCount : '—'}
+              </span>
+            </div>
+            {primary?.lastSeenAt && (
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-zinc-400">Heartbeat</span>
+                <span className="font-mono text-zinc-300 text-[11px]">Just now</span>
+              </div>
+            )}
           </div>
 
           {/* Connected Actions */}
@@ -196,7 +228,7 @@ export function AgentCard() {
               <button
                 onClick={() => void disconnect(primary.id)}
                 disabled={revoking}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition disabled:opacity-50 cursor-pointer"
               >
                 <Unplug size={13} />
                 <span>{revoking ? 'Disconnecting...' : 'Disconnect'}</span>
@@ -211,7 +243,7 @@ export function AgentCard() {
           <button
             onClick={() => void generateCode()}
             disabled={pairLoading}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-50"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-50 cursor-pointer"
           >
             {pairLoading ? <Loader2 size={13} className="animate-spin" /> : null}
             <span>Generate New Code</span>
@@ -222,8 +254,8 @@ export function AgentCard() {
         <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Connect your PC</p>
           <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-zinc-400">
-            <li>Make sure DeployX Agent is running.</li>
-            <li>Copy this pairing code into the Agent:</li>
+            <li>Make sure DeployX Agent is open on your PC.</li>
+            <li>Enter this six-digit pairing code:</li>
           </ol>
           <p className="mt-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-white">
             {pairing.code}
@@ -233,25 +265,28 @@ export function AgentCard() {
           </p>
           <button
             onClick={handleCancel}
-            className="mt-3 w-full rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 hover:bg-white/5 transition"
+            className="mt-3 w-full rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 hover:bg-white/5 transition cursor-pointer"
           >
             Cancel
           </button>
         </div>
       ) : (
-        /* 4. DISCONNECTED / OFFLINE INITIAL STATE */
-        <div className="mt-4 flex flex-col gap-2">
+        /* 4. DISCONNECTED / NOT CONNECTED STATE */
+        <div className="mt-4 flex flex-col gap-3">
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Open DeployX Agent on your PC and connect it to your account.
+          </p>
           <button
             onClick={() => void generateCode()}
             disabled={pairLoading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-50 cursor-pointer shadow-sm"
           >
             {pairLoading ? <Loader2 size={15} className="animate-spin" /> : null}
             <span>Connect Agent</span>
           </button>
           <a
             href="/download"
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2 text-xs font-medium text-zinc-400 hover:bg-white/5 hover:text-white transition"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2 text-xs font-medium text-zinc-300 hover:bg-white/5 hover:text-white transition"
           >
             <Download size={13} />
             <span>Download DeployX Agent</span>

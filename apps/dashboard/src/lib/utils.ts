@@ -83,3 +83,37 @@ export function truncateId(id: string, len = 10): string {
   if (id.length <= len) return id;
   return `${id.slice(0, len)}...`;
 }
+
+export function formatErrorMessage(err: unknown): string {
+  if (!err) return 'An unexpected error occurred.';
+  if (typeof err === 'string') return err;
+
+  const msg = (err as { message?: string })?.message || String(err);
+  const lower = msg.toLowerCase();
+
+  if (
+    (err as { name?: string })?.name === 'TypeError' ||
+    lower.includes('failed to fetch') ||
+    lower.includes('fetch failed') ||
+    lower.includes('networkerror') ||
+    lower.includes('econnrefused 127.0.0.1:4000') ||
+    lower.includes('econnrefused localhost:4000')
+  ) {
+    return `Cannot connect to DeployX API at ${API_URL}.`;
+  }
+
+  if (
+    msg.includes('DeployX Agent is offline') ||
+    lower.includes('agent is offline') ||
+    lower.includes('econnrefused 127.0.0.1:4100') ||
+    lower.includes('econnrefused localhost:4100')
+  ) {
+    return 'DeployX Agent is offline. Open DeployX Agent on your PC and reconnect.';
+  }
+
+  if (lower.includes('500') || lower.includes('internal server error')) {
+    return 'DeployX API service temporarily unavailable. Please retry in a moment.';
+  }
+
+  return msg || 'An error occurred. Please try again.';
+}

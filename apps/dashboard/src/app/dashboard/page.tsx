@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   Rocket,
   Layers,
-  Cpu,
   Activity,
   ArrowUpRight,
   ExternalLink,
@@ -14,6 +13,7 @@ import {
   RefreshCw,
   AlertCircle,
   Pause,
+  Play,
 } from 'lucide-react';
 import { API_URL, formatDate, formatDayOnly } from '../../lib/utils';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -49,6 +49,7 @@ export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const loadData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -87,8 +88,37 @@ export default function DashboardHome() {
     void loadData();
   }, []);
 
+  // Pause action directly from dashboard
+  const handlePause = async (deploymentId: string) => {
+    setActionLoading(deploymentId);
+    try {
+      const res = await fetch(`${API_URL}/deployments/${deploymentId}/pause`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        await loadData(true);
+      }
+    } catch {}
+    setActionLoading(null);
+  };
+
+  // Resume action directly from dashboard
+  const handleResume = async (deploymentId: string) => {
+    setActionLoading(deploymentId);
+    try {
+      const res = await fetch(`${API_URL}/deployments/${deploymentId}/resume`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        await loadData(true);
+      }
+    } catch {}
+    setActionLoading(null);
+  };
+
   const totalProjects = projects.length;
-  const totalDeployments = deployments.length;
   const activeDeployments = deployments.filter(
     (d) =>
       d.status === 'READY' ||
@@ -99,31 +129,30 @@ export default function DashboardHome() {
     (d) => d.status === 'PAUSED',
   ).length;
 
-  const recentDeployments = deployments.slice(0, 6);
-  const recentProjects = projects.slice(0, 4);
+  const recentDeployments = deployments.slice(0, 5);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Top Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.07] pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Dashboard
+          <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+            Welcome back
           </h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Real-time overview of projects, deployments, and Cloudflare tunnels.
+          <p className="mt-1 text-xs text-zinc-400">
+            Your projects, deployments and Agent in one place.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => void loadData(true)}
             disabled={loading || refreshing}
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/5 disabled:opacity-50"
-            title="Refresh data"
+            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#0d0f12] px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-white/20 hover:text-white disabled:opacity-50 cursor-pointer"
+            title="Refresh dashboard"
           >
             <RefreshCw
-              size={14}
+              size={13}
               className={refreshing ? 'animate-spin text-zinc-400' : ''}
             />
             <span>Refresh</span>
@@ -131,311 +160,292 @@ export default function DashboardHome() {
 
           <Link
             href="/dashboard/deploy"
-            className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-zinc-200 shadow-sm"
+            className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200 shadow-sm"
           >
-            <Rocket size={15} strokeWidth={2.5} />
-            <span>Deploy New Project</span>
+            <Rocket size={13} strokeWidth={2.5} />
+            <span>Deploy Project</span>
           </Link>
         </div>
       </div>
 
       {/* Error Banner */}
       {error && (
-        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-300">
-          <AlertCircle size={18} className="mt-0.5 shrink-0" />
+        <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3.5 text-xs text-rose-300">
+          <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Real Statistics Overview Cards */}
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {/* Projects count */}
-        <div className="rounded-2xl border border-white/[0.08] bg-[#111114] p-5 shadow-lg">
-          <div className="flex items-center justify-between text-zinc-400">
-            <span className="text-xs font-medium uppercase tracking-wider">
-              Projects
+      {/* Concise System Status Cards */}
+      <div className="mt-6 grid grid-cols-3 gap-3.5">
+        {/* Running */}
+        <div className="rounded-xl border border-white/[0.07] bg-[#0d0f12] p-4">
+          <div className="flex items-center justify-between text-zinc-400 text-xs">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+              Running
             </span>
-            <Layers size={16} className="text-zinc-500" />
+            <Activity size={14} className="text-emerald-400" />
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-white">
-              {loading ? (
-                <span className="inline-block h-8 w-12 animate-pulse rounded bg-white/10" />
-              ) : (
-                totalProjects
-              )}
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-white font-mono">
+              {loading ? '—' : activeDeployments}
             </span>
+            {activeDeployments > 0 && (
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            )}
           </div>
-          <p className="mt-1 text-xs text-zinc-500">Managed codebases</p>
+          <p className="mt-0.5 text-[11px] text-zinc-500">Active public URLs</p>
         </div>
 
-        {/* Deployments count */}
-        <div className="rounded-2xl border border-white/[0.08] bg-[#111114] p-5 shadow-lg">
-          <div className="flex items-center justify-between text-zinc-400">
-            <span className="text-xs font-medium uppercase tracking-wider">
-              Deployments
-            </span>
-            <Cpu size={16} className="text-zinc-500" />
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-white">
-              {loading ? (
-                <span className="inline-block h-8 w-12 animate-pulse rounded bg-white/10" />
-              ) : (
-                totalDeployments
-              )}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-zinc-500">Historical builds</p>
-        </div>
-
-        {/* Active deployments */}
-        <div className="rounded-2xl border border-emerald-500/20 bg-[#111114] p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute top-0 right-0 h-16 w-16 bg-emerald-500/10 blur-xl pointer-events-none" />
-          <div className="flex items-center justify-between text-emerald-400">
-            <span className="text-xs font-medium uppercase tracking-wider">
-              Active Deployments
-            </span>
-            <Activity size={16} />
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-white">
-              {loading ? (
-                <span className="inline-block h-8 w-12 animate-pulse rounded bg-white/10" />
-              ) : (
-                activeDeployments
-              )}
-            </span>
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          </div>
-          <p className="mt-1 text-xs text-zinc-500">Live with public URLs</p>
-        </div>
-
-        {/* Paused deployments */}
-        <div className="rounded-2xl border border-amber-500/20 bg-[#111114] p-5 shadow-lg">
-          <div className="flex items-center justify-between text-amber-400">
-            <span className="text-xs font-medium uppercase tracking-wider">
+        {/* Paused */}
+        <div className="rounded-xl border border-white/[0.07] bg-[#0d0f12] p-4">
+          <div className="flex items-center justify-between text-zinc-400 text-xs">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
               Paused
             </span>
-            <Pause size={16} />
+            <Pause size={14} className="text-amber-400" />
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-white">
-              {loading ? (
-                <span className="inline-block h-8 w-12 animate-pulse rounded bg-white/10" />
-              ) : (
-                pausedDeployments
-              )}
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-white font-mono">
+              {loading ? '—' : pausedDeployments}
             </span>
           </div>
-          <p className="mt-1 text-xs text-zinc-500">Tunnel stopped / ready to resume</p>
+          <p className="mt-0.5 text-[11px] text-zinc-500">Stopped containers</p>
+        </div>
+
+        {/* Projects */}
+        <div className="rounded-xl border border-white/[0.07] bg-[#0d0f12] p-4">
+          <div className="flex items-center justify-between text-zinc-400 text-xs">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+              Projects
+            </span>
+            <Layers size={14} className="text-zinc-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-white font-mono">
+              {loading ? '—' : totalProjects}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-zinc-500">Managed codebases</p>
         </div>
       </div>
 
-      {/* Recent Deployments Table */}
-      <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold tracking-tight text-white">
-              Recent Deployments
-            </h2>
-            <Link
-              href="/dashboard/deployments"
-              className="flex items-center gap-1 text-xs font-medium text-zinc-400 transition hover:text-white"
-            >
-              <span>View all deployments</span>
-              <ChevronRight size={14} />
-            </Link>
-          </div>
-
-        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111114] shadow-xl">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-zinc-500">
-              <Loader2 size={24} className="animate-spin mb-2" />
-              <p className="text-xs">Loading deployments from database...</p>
-            </div>
-          ) : recentDeployments.length === 0 ? (
-            <div className="py-16 text-center">
-              <Cpu size={32} className="mx-auto text-zinc-600 mb-3" />
-              <h3 className="text-base font-medium text-zinc-300">
-                No deployments yet
-              </h3>
-              <p className="mt-1 text-xs text-zinc-500">
-                Deploy your first project to see deployment history here.
-              </p>
+      {/* Main Content Layout */}
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_310px]">
+        {/* Left Column: Your Projects & Recent Activity */}
+        <div className="space-y-8">
+          {/* Projects Section */}
+          <div>
+            <div className="flex items-center justify-between mb-3.5">
+              <h2 className="text-sm font-semibold tracking-tight text-white">
+                Your projects
+              </h2>
               <Link
-                href="/dashboard/deploy"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200"
+                href="/dashboard/projects"
+                className="flex items-center gap-1 text-xs font-medium text-zinc-400 transition hover:text-white"
               >
-                <Rocket size={14} />
-                Deploy Project
+                <span>All projects</span>
+                <ChevronRight size={13} />
               </Link>
             </div>
-          ) : (
-            <div className="divide-y divide-white/[0.06]">
-              {recentDeployments.map((d) => {
-                const isReady = d.status === 'READY';
-                return (
-                  <div
-                    key={d.id}
-                    className="flex flex-col gap-3 p-4 transition-colors hover:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex items-start sm:items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/5 text-zinc-300">
-                        <Cpu size={16} />
-                      </div>
 
+            {loading ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-32 rounded-xl border border-white/[0.06] bg-[#0d0f12] p-4 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="rounded-xl border border-white/[0.07] bg-[#0d0f12] p-8 text-center">
+                <Layers size={28} className="mx-auto text-zinc-600 mb-2.5" />
+                <h3 className="text-sm font-semibold text-zinc-200">
+                  No projects deployed yet
+                </h3>
+                <p className="mt-1 text-xs text-zinc-500 max-w-sm mx-auto">
+                  Deploy your first project from your computer to run it in Docker and generate a temporary public URL.
+                </p>
+                <Link
+                  href="/dashboard/deploy"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition"
+                >
+                  <Rocket size={13} />
+                  <span>Deploy Project</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {projects.slice(0, 4).map((p) => {
+                  const latest = p.latestDeployment || p.deployments?.[0];
+                  const isLive = latest?.status === 'READY';
+                  const isPaused = latest?.status === 'PAUSED';
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex flex-col justify-between rounded-xl border border-white/[0.07] bg-[#0d0f12] p-4 transition hover:border-white/15"
+                    >
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start justify-between gap-2">
                           <Link
-                            href={`/dashboard/deployments/${d.id}`}
-                            className="font-medium text-white hover:underline text-sm"
+                            href={`/dashboard/projects/${p.id}`}
+                            className="text-sm font-semibold text-white hover:underline truncate"
                           >
-                            {d.projectName}
+                            {p.name}
                           </Link>
-                          {d.framework && (
-                            <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-zinc-400 font-mono">
-                              {d.framework}
+                          {p.framework && (
+                            <span className="shrink-0 rounded bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+                              {p.framework}
                             </span>
                           )}
                         </div>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
-                          {d.url ? (
-                            <a
-                              href={d.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-zinc-400 hover:text-white transition font-mono truncate max-w-[260px] sm:max-w-[340px]"
-                            >
-                              <span>{d.url}</span>
-                              <ExternalLink size={11} className="shrink-0" />
-                            </a>
+                        <div className="mt-2.5 flex items-center gap-2">
+                          {latest ? (
+                            <StatusBadge status={latest.status} size="sm" />
                           ) : (
-                            <span className="text-zinc-600 font-mono">No active URL</span>
+                            <span className="text-[11px] text-zinc-500">Not deployed</span>
                           )}
-                          <span>•</span>
-                          <span>{formatDate(d.createdAt)}</span>
+                        </div>
+
+                        {latest?.url ? (
+                          <div className="mt-2">
+                            <a
+                              href={latest.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1 text-xs font-mono text-emerald-400 hover:underline truncate"
+                            >
+                              <span className="truncate">{latest.url}</span>
+                              <ExternalLink size={10} className="shrink-0" />
+                            </a>
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-[11px] font-mono text-zinc-500">
+                            {isPaused ? 'Paused — no active URL' : 'No active URL'}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                        <span className="text-[11px] text-zinc-500">
+                          {formatDayOnly(latest?.createdAt || p.updatedAt)}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {isLive && latest && (
+                            <button
+                              onClick={() => void handlePause(latest.id)}
+                              disabled={actionLoading === latest.id}
+                              className="text-[11px] font-medium text-zinc-400 hover:text-white transition disabled:opacity-50"
+                            >
+                              Pause
+                            </button>
+                          )}
+                          {isPaused && latest && (
+                            <button
+                              onClick={() => void handleResume(latest.id)}
+                              disabled={actionLoading === latest.id}
+                              className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition disabled:opacity-50"
+                            >
+                              Resume
+                            </button>
+                          )}
+                          <Link
+                            href={`/dashboard/projects/${p.id}`}
+                            className="text-[11px] font-medium text-zinc-300 hover:text-white transition"
+                          >
+                            View →
+                          </Link>
                         </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t border-white/5 sm:border-0">
-                      <StatusBadge status={d.status} size="sm" />
+          {/* Recent Activity Section */}
+          <div>
+            <div className="flex items-center justify-between mb-3.5">
+              <h2 className="text-sm font-semibold tracking-tight text-white">
+                Recent activity
+              </h2>
+              <Link
+                href="/dashboard/deployments"
+                className="flex items-center gap-1 text-xs font-medium text-zinc-400 transition hover:text-white"
+              >
+                <span>All deployments</span>
+                <ChevronRight size={13} />
+              </Link>
+            </div>
 
-                      <div className="flex items-center gap-2">
-                        {isReady && d.url && (
+            <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#0d0f12]">
+              {loading ? (
+                <div className="py-12 text-center text-xs text-zinc-500">
+                  <Loader2 size={16} className="animate-spin mx-auto mb-2 text-zinc-500" />
+                  <span>Loading recent activity...</span>
+                </div>
+              ) : recentDeployments.length === 0 ? (
+                <div className="py-10 text-center text-xs text-zinc-500">
+                  No recent activity recorded yet.
+                </div>
+              ) : (
+                <div className="divide-y divide-white/[0.05]">
+                  {recentDeployments.map((d) => (
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between p-3.5 transition hover:bg-white/[0.02]"
+                    >
+                      <div className="min-w-0 flex-1 pr-4">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/dashboard/deployments/${d.id}`}
+                            className="text-xs font-semibold text-white hover:underline truncate"
+                          >
+                            {d.projectName}
+                          </Link>
+                          <StatusBadge status={d.status} size="sm" />
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-zinc-500 font-mono truncate">
+                          {d.url ? d.url : formatDate(d.createdAt)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {d.url && (
                           <a
                             href={d.url}
                             target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 transition"
+                            rel="noreferrer"
+                            className="rounded p-1 text-zinc-400 hover:text-white transition"
+                            title="Open URL"
                           >
-                            <span>Open</span>
-                            <ArrowUpRight size={12} />
+                            <ArrowUpRight size={13} />
                           </a>
                         )}
-
                         <Link
                           href={`/dashboard/deployments/${d.id}`}
-                          className="rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-zinc-300 hover:bg-white/5 hover:text-white transition"
+                          className="rounded border border-white/10 px-2 py-0.5 text-[11px] font-medium text-zinc-300 hover:bg-white/[0.04] transition"
                         >
-                          View
+                          Details
                         </Link>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-        </div>
-        <aside className="lg:pt-[36px]">
+
+        {/* Right Column: Agent Widget */}
+        <aside className="space-y-4">
           <AgentCard />
         </aside>
-      </div>
-
-      {/* Recent Projects Section */}
-      <div className="mt-10 mb-12">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold tracking-tight text-white">
-            Projects
-          </h2>
-          <Link
-            href="/dashboard/projects"
-            className="flex items-center gap-1 text-xs font-medium text-zinc-400 transition hover:text-white"
-          >
-            <span>View all projects</span>
-            <ChevronRight size={14} />
-          </Link>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-36 rounded-2xl border border-white/5 bg-[#111114] p-5 animate-pulse"
-              />
-            ))
-          ) : recentProjects.length === 0 ? (
-            <div className="col-span-full rounded-2xl border border-white/[0.08] bg-[#111114] p-8 text-center text-zinc-500 text-sm">
-              No projects created yet.
-            </div>
-          ) : (
-            recentProjects.map((p) => {
-              const depCount = p.deployments?.length || 0;
-              const latest = p.latestDeployment;
-              return (
-                <div
-                  key={p.id}
-                  className="group flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111114] p-5 transition hover:border-white/20 hover:bg-white/[0.02] shadow-lg"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-white group-hover:text-zinc-200 truncate">
-                        {p.name}
-                      </h3>
-                      {p.framework && (
-                        <span className="rounded bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400 font-mono">
-                          {p.framework}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-3 flex items-center gap-2">
-                      {latest ? (
-                        <StatusBadge status={latest.status} size="sm" />
-                      ) : (
-                        <span className="text-[11px] text-zinc-500">
-                          Not deployed
-                        </span>
-                      )}
-                      <span className="text-xs text-zinc-500">
-                        {depCount} {depCount === 1 ? 'build' : 'builds'}
-                      </span>
-                    </div>
-
-                    <p className="mt-2 text-xs text-zinc-500">
-                      Last deployed: {formatDayOnly(latest?.createdAt || p.updatedAt)}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
-                    <Link
-                      href={`/dashboard/projects/${p.id}`}
-                      className="text-xs font-semibold text-zinc-300 hover:text-white flex items-center gap-1 transition"
-                    >
-                      <span>View Project</span>
-                      <ChevronRight size={13} />
-                    </Link>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
       </div>
     </main>
   );

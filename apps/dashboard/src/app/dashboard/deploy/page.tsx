@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-
+import Link from 'next/link';
 import {
   Upload,
   Rocket,
@@ -18,10 +18,16 @@ import {
   AlertCircle,
   Pause,
   Play,
-  Terminal,
   Trash2,
+  Globe,
+  Radio,
+  ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
-import { API_URL } from '../../../lib/utils';
+import { API_URL, formatErrorMessage, truncateId } from '../../../lib/utils';
+import { StatusBadge } from '../../../components/StatusBadge';
+import { DeploymentTerminal } from '../../../components/DeploymentTerminal';
+import { ConfirmModal } from '../../../components/ConfirmModal';
 
 type DeploymentDetails = {
   id: string;
@@ -49,41 +55,6 @@ type DeploymentDetails = {
   updatedAt?: string;
 };
 
-function formatErrorMessage(err: unknown): string {
-  if (!err) return 'An unexpected error occurred.';
-  if (typeof err === 'string') return err;
-
-  const msg =
-    (err as { message?: string })?.message || String(err);
-
-  const lower = msg.toLowerCase();
-  if (
-    (err as { name?: string })?.name === 'TypeError' ||
-    lower.includes('failed to fetch') ||
-    lower.includes('fetch failed') ||
-    lower.includes('networkerror') ||
-    lower.includes('econnrefused 127.0.0.1:4000') ||
-    lower.includes('econnrefused localhost:4000')
-  ) {
-    return `Cannot connect to DeployX API at ${API_URL}.`;
-  }
-
-  if (
-    msg.includes('DeployX Agent is offline') ||
-    lower.includes('agent is offline') ||
-    lower.includes('econnrefused 127.0.0.1:4100') ||
-    lower.includes('econnrefused localhost:4100')
-  ) {
-    return 'DeployX Agent is offline. Start the DeployX Agent on this PC.';
-  }
-
-  if (lower.includes('500') || lower.includes('internal server error')) {
-    return 'DeployX API returned an error.';
-  }
-
-  return msg || 'An error occurred during deployment.';
-}
-
 export default function DeployPage() {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -95,15 +66,12 @@ export default function DeployPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [agentRequired, setAgentRequired] = useState(false);
   const [pairing, setPairing] = useState<{ code: string; expiresAt: string } | null>(null);
-
-  const logEndRef = useRef<HTMLDivElement | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   /*
-   * -----------------------------------------
-   * HEALTH CHECK ON MOUNT
-   * -----------------------------------------
+   * Health Check on Mount
    */
-
   useEffect(() => {
     let mounted = true;
     const checkApiHealth = async () => {
@@ -116,8 +84,7 @@ export default function DeployPage() {
           setError((prev) => (prev?.includes('Cannot connect to DeployX API') ? null : prev));
         }
       } catch {
-        // Do not block initial render with an error before the user even uploads a project.
-        // Cold-starting APIs will be reached when the user triggers the deployment.
+        // Cold-starting API check
       }
     };
 
@@ -128,11 +95,8 @@ export default function DeployPage() {
   }, []);
 
   /*
-   * -----------------------------------------
-   * FILE SELECTION
-   * -----------------------------------------
+   * File selection
    */
-
   const selectFile = (selectedFile: File | null) => {
     setError(null);
     setDeployment(null);
@@ -144,7 +108,7 @@ export default function DeployPage() {
     }
 
     if (!selectedFile.name.toLowerCase().endsWith('.zip')) {
-      setError('Please select a ZIP file.');
+      setError('Please select a valid .ZIP project archive.');
       setFile(null);
       return;
     }
@@ -163,14 +127,9 @@ export default function DeployPage() {
   };
 
   /*
-   * -----------------------------------------
-   * FETCH DEPLOYMENT STATUS / LOGS VIA API
-   * -----------------------------------------
+   * Load deployment updates
    */
-
-  const loadDeployment = async (
-    deploymentId: string,
-  ): Promise<DeploymentDetails | null> => {
+  const loadDeployment = async (deploymentId: string): Promise<DeploymentDetails | null> => {
     try {
       const response = await fetch(`${API_URL}/deployments/${deploymentId}`, {
         cache: 'no-store',
@@ -183,9 +142,7 @@ export default function DeployPage() {
           errData?.message?.includes('Agent is offline') ||
           errData?.message?.includes('DeployX Agent')
         ) {
-          setError(
-            'DeployX Agent is offline. Start the DeployX Agent on this PC.',
-          );
+          setError('DeployX Agent is offline. Launch DeployX Agent on your PC.');
         }
         return null;
       }
@@ -201,7 +158,7 @@ export default function DeployPage() {
       }
 
       if (data.status === 'FAILED') {
-        setError('Deployment failed. Check the deployment terminal.');
+        setError('Deployment failed. Review the terminal output below for error details.');
       }
 
       return data;
@@ -215,11 +172,8 @@ export default function DeployPage() {
   };
 
   /*
-   * -----------------------------------------
-   * LIVE POLLING (1 SECOND INTERVAL)
-   * -----------------------------------------
+   * Live polling (1-1.5s interval while building)
    */
-
   useEffect(() => {
     const deploymentId = deployment?.id;
     if (!deploymentId) return;
@@ -238,8 +192,7 @@ export default function DeployPage() {
     if (!shouldPoll) return;
 
     let active = true;
-
-    const poll = async () => {
+    const interval = setInterval(async () => {
       if (!active) return;
       const updated = await loadDeployment(deploymentId);
       if (
@@ -251,9 +204,7 @@ export default function DeployPage() {
       ) {
         active = false;
       }
-    };
-
-    const interval = setInterval(poll, 1000);
+    }, 1200);
 
     return () => {
       active = false;
@@ -262,26 +213,11 @@ export default function DeployPage() {
   }, [deployment?.id, deployment?.status]);
 
   /*
-   * -----------------------------------------
-   * AUTO SCROLL TERMINAL
-   * -----------------------------------------
+   * Deploy via API
    */
-
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({
-      behavior: 'smooth',
-    });
-  }, [logs]);
-
-  /*
-   * -----------------------------------------
-   * DEPLOY VIA API (NON-BLOCKING)
-   * -----------------------------------------
-   */
-
   const deploy = async () => {
     if (!file) {
-      setError('Choose a ZIP project first.');
+      setError('Please choose a .ZIP archive first.');
       return;
     }
 
@@ -301,43 +237,46 @@ export default function DeployPage() {
         body: formData,
       });
 
-      const data = await response.json().catch(() => null);
-
       if (!response.ok) {
-        const errorMsg =
-          data?.message ||
-          (Array.isArray(data?.message)
-            ? data.message.join(', ')
-            : 'Deployment failed.');
-        if (errorMsg.includes('Connect your DeployX Agent')) {
+        const errorData = await response.json().catch(() => null);
+        const errMsg = errorData?.message || 'Failed to upload project.';
+
+        if (
+          errMsg.includes('DeployX Agent is offline') ||
+          errMsg.includes('No online agents found') ||
+          errMsg.includes('Agent offline')
+        ) {
           setAgentRequired(true);
-          setError(null);
+          throw new Error('Your DeployX Agent is offline. Open DeployX Agent on your PC.');
         }
-        throw new Error(errorMsg);
+
+        throw new Error(errMsg);
       }
 
-      // Initial deployment payload immediately returned from upload service
-      const initialDeployment: DeploymentDetails = {
-        id: data.deployment.id,
-        agentDeploymentId: data.deployment.id,
-        status: 'BUILDING',
-        url: null,
-        localUrl: null,
-        port: null,
-        logs: [
-          'DeployX deployment started',
-          'Project uploaded',
-          'Sending project to DeployX Agent...',
-        ],
-        project: data.project,
-      };
+      const data = await response.json();
 
-      setDeployment(initialDeployment);
-      setLogs(initialDeployment.logs);
+      setDeployment({
+        id: data.deployment?.id || data.id,
+        agentDeploymentId: data.deployment?.id || data.id,
+        status: data.deployment?.status || data.status || 'QUEUED',
+        url: data.deployment?.url || data.url || null,
+        localUrl: data.deployment?.localUrl || null,
+        port: data.deployment?.port || null,
+        logs: data.deployment?.logs || [],
+        project: data.project || {
+          id: data.deployment?.projectId,
+          name: data.deployment?.projectName || file.name.replace(/\.zip$/i, ''),
+          slug: '',
+        },
+      });
 
-      // Immediately poll for current state from Agent via API
-      if (initialDeployment.id) {
-        void loadDeployment(initialDeployment.id);
+      if (data.deployment?.logs?.length) {
+        setLogs(data.deployment.logs);
+      }
+
+      // Initial status load
+      if (data.deployment?.id) {
+        void loadDeployment(data.deployment.id);
       }
     } catch (err: unknown) {
       setError(formatErrorMessage(err));
@@ -347,11 +286,8 @@ export default function DeployPage() {
   };
 
   /*
-   * -----------------------------------------
-   * PAUSE DEPLOYMENT VIA API
-   * -----------------------------------------
+   * Pause deployment
    */
-
   const pauseDeployment = async () => {
     const deploymentId = deployment?.id;
     if (!deploymentId) return;
@@ -360,34 +296,17 @@ export default function DeployPage() {
     setError(null);
 
     try {
-      const response = await fetch(
-        `${API_URL}/deployments/${deploymentId}/pause`,
-        {
-          method: 'POST',
-          credentials: 'include',
-        },
-      );
-
-      const data = await response.json().catch(() => null);
+      const response = await fetch(`${API_URL}/deployments/${deploymentId}/pause`, {
+        method: 'POST',
+        credentials: 'include',
+      });
 
       if (!response.ok) {
+        const data = await response.json().catch(() => null);
         throw new Error(data?.message || 'Failed to pause deployment.');
       }
 
-      setDeployment((prev) =>
-        prev
-          ? {
-              ...prev,
-              ...data,
-              status: 'PAUSED',
-              url: null,
-            }
-          : null,
-      );
-
-      if (data.logs && Array.isArray(data.logs)) {
-        setLogs(data.logs);
-      }
+      void loadDeployment(deploymentId);
     } catch (err: unknown) {
       setError(formatErrorMessage(err));
     } finally {
@@ -396,96 +315,54 @@ export default function DeployPage() {
   };
 
   /*
-   * -----------------------------------------
-   * RESUME DEPLOYMENT VIA API
-   * -----------------------------------------
+   * Resume deployment
    */
-
   const resumeDeployment = async () => {
     const deploymentId = deployment?.id;
     if (!deploymentId) return;
 
     setActionLoading(true);
     setError(null);
-    setDeployment((prev) =>
-      prev
-        ? {
-            ...prev,
-            status: 'RESUMING',
-          }
-        : null,
-    );
 
     try {
-      const response = await fetch(
-        `${API_URL}/deployments/${deploymentId}/resume`,
-        {
-          method: 'POST',
-          credentials: 'include',
-        },
-      );
-
-      const data = await response.json().catch(() => null);
+      const response = await fetch(`${API_URL}/deployments/${deploymentId}/resume`, {
+        method: 'POST',
+        credentials: 'include',
+      });
 
       if (!response.ok) {
+        const data = await response.json().catch(() => null);
         throw new Error(data?.message || 'Failed to resume deployment.');
       }
 
-      setDeployment((prev) =>
-        prev
-          ? {
-              ...prev,
-              ...data,
-              status: data.status || 'READY',
-              url: data.url || data.publicUrl || null,
-            }
-          : null,
-      );
-
-      if (data.logs && Array.isArray(data.logs)) {
-        setLogs(data.logs);
-      }
+      void loadDeployment(deploymentId);
     } catch (err: unknown) {
       setError(formatErrorMessage(err));
-      void loadDeployment(deploymentId);
     } finally {
       setActionLoading(false);
     }
   };
 
   /*
-   * -----------------------------------------
-   * COPY URL
-   * -----------------------------------------
+   * Copy URL
    */
-
   const copyUrl = async () => {
     const url = deployment?.url;
     if (!url) return;
 
     await navigator.clipboard.writeText(url);
     setCopied(true);
-
-    setTimeout(() => {
-      setCopied(false);
-    }, 2000);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   /*
-   * -----------------------------------------
-   * DELETE DEPLOYMENT VIA API
-   * -----------------------------------------
+   * Delete deployment
    */
-
-  const deleteDeployment = async () => {
+  const handleDelete = async () => {
     const deploymentId = deployment?.id;
     if (!deploymentId) return;
 
-    if (!window.confirm('Are you sure you want to delete this deployment and stop its container?')) {
-      return;
-    }
-
-    setActionLoading(true);
+    setDeleting(true);
     setError(null);
 
     try {
@@ -502,497 +379,357 @@ export default function DeployPage() {
       setDeployment(null);
       setLogs([]);
       setFile(null);
+      setDeleteOpen(false);
     } catch (err: unknown) {
       setError(formatErrorMessage(err));
     } finally {
-      setActionLoading(false);
+      setDeleting(false);
     }
   };
 
-  /*
-   * -----------------------------------------
-   * STATUS & DERIVED STATE
-   * -----------------------------------------
-   */
-
   const currentStatus = deployment?.status || 'QUEUED';
   const publicUrl = deployment?.url || '';
-
-  // In DeployX, an active deployment with a public URL is LIVE
   const isLive = (currentStatus === 'READY' || currentStatus === 'RUNNING') && !!publicUrl;
-  const statusReady = isLive;
   const statusPaused = currentStatus === 'PAUSED';
   const statusFailed = currentStatus === 'FAILED';
-  const statusBuilding =
-    !isLive &&
-    !statusPaused &&
-    !statusFailed &&
-    (currentStatus === 'BUILDING' ||
-      currentStatus === 'QUEUED' ||
-      currentStatus === 'STARTING' ||
-      currentStatus === 'CREATING_TUNNEL' ||
-      currentStatus === 'RUNNING');
-  const statusResuming = currentStatus === 'RESUMING';
 
-  // Pipeline check marks calculated from real lifecycle
+  // Pipeline check marks
   const isUploaded = !!deployment;
   const isBuilt =
     isLive ||
     statusPaused ||
     currentStatus === 'RUNNING' ||
     currentStatus === 'CREATING_TUNNEL' ||
-    logs.some(
-      (l) =>
-        l.includes('Build completed') ||
-        l.includes('Compiled successfully') ||
-        l.includes('Build finished') ||
-        l.includes('Project ready') ||
-        l.includes('Container prep') ||
-        l.includes('Static runtime ready') ||
-        l.includes('Total deployment time'),
+    logs.some((l) =>
+      l.includes('Build completed') ||
+      l.includes('Compiled successfully') ||
+      l.includes('Build finished') ||
+      l.includes('Project ready') ||
+      l.includes('Application started'),
     );
   const isRunning =
     isLive ||
     statusPaused ||
     currentStatus === 'RUNNING' ||
     currentStatus === 'CREATING_TUNNEL' ||
-    logs.some(
-      (l) =>
-        l.includes('Application healthy') ||
-        l.includes('Application started') ||
-        l.includes('Container running') ||
-        l.includes('Ready in') ||
-        l.includes('Static runtime ready') ||
-        l.includes('Health check'),
+    logs.some((l) =>
+      l.includes('Application healthy') ||
+      l.includes('Application started') ||
+      l.includes('Container running') ||
+      l.includes('Ready in'),
     );
   const isPublic = isLive;
 
-  /*
-   * -----------------------------------------
-   * UI
-   * -----------------------------------------
-   */
-
   return (
-    <main className="min-h-screen bg-[#0b0b0d] text-white">
-      <div className="mx-auto max-w-5xl px-6 py-12 md:px-10 md:py-16">
-        {/* Header */}
-        <div className="mb-10">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-black">
-              <Rocket size={18} strokeWidth={2.5} />
-            </div>
-
-            <span className="text-sm font-semibold tracking-wide text-zinc-300">
-              DeployX
-            </span>
-          </div>
-
-          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
-            Deploy your project.
-          </h1>
-
-          <p className="mt-3 max-w-xl text-base leading-7 text-zinc-400">
-            Upload your student project and DeployX will build it, run it in
-            Docker, and create a temporary Cloudflare public URL.
-          </p>
+    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2">
+          <Link href="/dashboard" className="hover:text-white transition">
+            Dashboard
+          </Link>
+          <ChevronRight size={12} />
+          <span className="text-zinc-300">Deploy</span>
         </div>
+        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          Deploy Project
+        </h1>
+        <p className="mt-1 text-xs text-zinc-400">
+          Upload your project ZIP archive. DeployX builds it locally in Docker and creates a secure temporary public URL.
+        </p>
+      </div>
 
-        {/* Upload Card */}
-        <div className="rounded-3xl border border-white/10 bg-[#111114] p-5 shadow-2xl md:p-7">
-          <div
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={handleDrop}
-            className={[
-              'flex min-h-[280px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed transition',
-              dragging
-                ? 'border-white bg-white/[0.06]'
-                : 'border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]',
-            ].join(' ')}
-          >
-            <input
-              id="project-upload"
-              type="file"
-              accept=".zip"
-              className="hidden"
-              onChange={handleFileChange}
-            />
+      {/* Upload Zone */}
+      <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          className={`flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed transition p-6 ${
+            dragging
+              ? 'border-white bg-white/[0.05]'
+              : 'border-white/[0.12] bg-[#08090a]/50 hover:border-white/25 hover:bg-[#08090a]'
+          }`}
+        >
+          <input
+            id="project-upload"
+            type="file"
+            accept=".zip"
+            className="hidden"
+            onChange={handleFileChange}
+          />
 
-            {file ? (
-              <>
-                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
-                  <FileArchive size={27} />
-                </div>
-
-                <h2 className="text-lg font-medium">{file.name}</h2>
-
-                <p className="mt-2 text-sm text-zinc-500">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                </p>
-
-                <label
-                  htmlFor="project-upload"
-                  className="mt-5 cursor-pointer rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
-                >
-                  Choose another ZIP
-                </label>
-              </>
-            ) : (
-              <>
-                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
-                  <Upload size={26} />
-                </div>
-
-                <h2 className="text-lg font-medium">Drop your ZIP here</h2>
-
-                <p className="mt-2 text-sm text-zinc-500">
-                  or select a project from your computer
-                </p>
-
-                <label
-                  htmlFor="project-upload"
-                  className="mt-5 cursor-pointer rounded-xl bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-zinc-200"
-                >
-                  Choose ZIP
-                </label>
-              </>
-            )}
-          </div>
-
-          {/* Deploy Button */}
-          <button
-            onClick={deploy}
-            disabled={!file || deploying}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {deploying ? (
-              <>
-                <Loader2 size={17} className="animate-spin" />
-                Uploading & Starting...
-              </>
-            ) : (
-              <>
-                <Rocket size={17} />
-                Deploy Project
-              </>
-            )}
-          </button>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300">
-              <AlertCircle size={18} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
+          {file ? (
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg border border-white/[0.08] bg-[#111317] text-white">
+                <FileArchive size={22} />
+              </div>
+              <h3 className="font-mono text-sm font-semibold text-white truncate max-w-sm">
+                {file.name}
+              </h3>
+              <p className="mt-1 font-mono text-[11px] text-zinc-500">
+                {(file.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+              <label
+                htmlFor="project-upload"
+                className="mt-3 cursor-pointer font-mono text-xs text-zinc-400 hover:text-white transition underline"
+              >
+                Choose a different ZIP
+              </label>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg border border-white/[0.08] bg-[#111317] text-zinc-400">
+                <Upload size={18} />
+              </div>
+              <h3 className="text-sm font-semibold text-white">
+                Drag and drop your project ZIP here
+              </h3>
+              <p className="mt-1 text-xs text-zinc-500">
+                Supports Next.js, React, Vite, Node.js, static HTML/CSS, or Dockerfile projects
+              </p>
+              <label
+                htmlFor="project-upload"
+                className="mt-4 cursor-pointer rounded-lg border border-white/[0.08] bg-[#111317] px-4 py-1.5 text-xs font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.06]"
+              >
+                Browse Files
+              </label>
             </div>
           )}
-          {agentRequired && (
-            <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-5 text-center">
-              <p className="text-sm font-semibold text-amber-200">Connect your DeployX Agent before deploying.</p>
-              <p className="mt-1 text-xs text-zinc-400">Start the Agent on your PC, then pair it with the code below.</p>
-              {!pairing ? (
+        </div>
+
+        {/* Deploy Action Button */}
+        <button
+          onClick={() => void deploy()}
+          disabled={!file || deploying}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40 shadow-sm"
+        >
+          {deploying ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              <span>Uploading & Building...</span>
+            </>
+          ) : (
+            <>
+              <Rocket size={14} />
+              <span>Deploy Project</span>
+            </>
+          )}
+        </button>
+
+        {/* Error message */}
+        {error && (
+          <div className="mt-3.5 flex items-start gap-2.5 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300">
+            <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Agent Required Prompt */}
+        {agentRequired && (
+          <div className="mt-4 rounded-lg border border-amber-500/20 bg-[#08090a] p-4 text-center">
+            <p className="text-xs font-semibold text-amber-200">
+              Your DeployX Agent is offline.
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-400">
+              Launch DeployX Agent on your PC, then pair it using the 6-digit code.
+            </p>
+            {!pairing ? (
+              <div className="mt-3 flex items-center justify-center gap-2">
                 <button
                   onClick={async () => {
                     const res = await fetch(`${API_URL}/agents/pair`, { method: 'POST', credentials: 'include' });
                     const data = await res.json().catch(() => null);
                     if (res.ok && data?.code) setPairing({ code: data.code, expiresAt: data.expiresAt });
                   }}
-                  className="mt-3 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200"
+                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition"
                 >
-                  Connect Agent
+                  Generate Pairing Code
                 </button>
-              ) : (
-                <div className="mt-3">
-                  <p className="font-mono text-2xl font-bold tracking-[0.3em] text-white">{pairing.code}</p>
-                  <p className="mt-1 text-[11px] text-zinc-500">POST it to http://localhost:4100/agent/pair</p>
-                  <button onClick={() => setAgentRequired(false)} className="mt-2 text-xs text-zinc-400 underline">Dismiss</button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Deployment Section */}
-        {deployment && (
-          <div className="mt-8 rounded-3xl border border-white/10 bg-[#111114] p-6 md:p-7">
-            {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm text-zinc-500">Deployment</p>
-                <h2 className="mt-1 text-xl font-medium">
-                  {deployment.project?.name || 'Student Project'}
-                </h2>
-              </div>
-
-              <div
-                className={[
-                  'flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium',
-                  statusReady
-                    ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
-                    : statusPaused
-                    ? 'border-yellow-500/20 bg-yellow-500/10 text-yellow-400'
-                    : statusFailed
-                    ? 'border-red-500/20 bg-red-500/10 text-red-400'
-                    : 'border-blue-500/20 bg-blue-500/10 text-blue-400',
-                ].join(' ')}
-              >
-                {statusBuilding || statusResuming ? (
-                  <Loader2 size={12} className="animate-spin text-blue-400" />
-                ) : (
-                  <span
-                    className={[
-                      'h-1.5 w-1.5 rounded-full',
-                      statusReady
-                        ? 'bg-emerald-400'
-                        : statusPaused
-                        ? 'bg-yellow-400'
-                        : statusFailed
-                        ? 'bg-red-400'
-                        : 'bg-blue-400',
-                    ].join(' ')}
-                  />
-                )}
-
-                {isLive ? 'LIVE' : currentStatus}
-              </div>
-            </div>
-
-            {/* Pipeline Steps (Part 14) */}
-            <div className="mt-7 grid gap-3 md:grid-cols-4">
-              {[
-                { label: 'Uploaded', done: isUploaded },
-                { label: 'Built', done: isBuilt },
-                { label: 'Running', done: isRunning },
-                { label: 'Public', done: isPublic },
-              ].map((step) => (
-                <div
-                  key={step.label}
-                  className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.025] p-4"
+                <Link
+                  href="/download"
+                  className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-zinc-300 hover:text-white transition"
                 >
-                  <div
-                    className={[
-                      'flex h-7 w-7 items-center justify-center rounded-full transition-colors',
-                      step.done
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'bg-white/5 text-zinc-600',
-                    ].join(' ')}
-                  >
-                    {step.done ? (
-                      <Check size={15} />
-                    ) : (
-                      <div className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
-                    )}
-                  </div>
-
-                  <span
-                    className={[
-                      'text-sm font-medium',
-                      step.done ? 'text-zinc-200' : 'text-zinc-500',
-                    ].join(' ')}
-                  >
-                    {step.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Terminal Logs (Part 13) */}
-            <div className="mt-7 overflow-hidden rounded-2xl border border-white/10 bg-[#09090b]">
-              <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-                <Terminal size={15} className="text-zinc-500" />
-                <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  Deployment logs
-                </span>
-
-                {(statusBuilding || statusResuming || deploying) && (
-                  <Loader2
-                    size={14}
-                    className="ml-auto animate-spin text-zinc-500"
-                  />
-                )}
+                  Download Agent
+                </Link>
               </div>
-
-              <div className="h-64 overflow-y-auto px-4 py-4 font-mono text-xs leading-6 text-zinc-400">
-                {logs.length === 0 ? (
-                  <div className="text-zinc-600">
-                    Waiting for deployment logs...
-                  </div>
-                ) : (
-                  logs.map((log, index) => (
-                    <div
-                      key={`${index}-${log}`}
-                      className="whitespace-pre-wrap"
-                    >
-                      <span className="mr-2 text-zinc-700">$</span>
-                      {log}
-                    </div>
-                  ))
-                )}
-                <div ref={logEndRef} />
-              </div>
-            </div>
-
-            {/* Public URL Preview Card (Screenshot 3 Hero Style) */}
-            {isLive && publicUrl && (
-              <div className="mt-7 rounded-[28px] border border-white/10 bg-[#111114] p-6 sm:p-7 shadow-xl">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
-                      Public URL preview
-                    </p>
-                    <h3 className="mt-2 text-2xl font-bold tracking-tight text-white">
-                      Project is live.
-                    </h3>
-                  </div>
-
-                  <div className="w-full lg:max-w-xl">
-                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-emerald-200">
-                            Project
-                          </div>
-                          <div className="mt-1 text-xl font-bold text-white">
-                            {deployment.project?.name || 'Project'}
-                          </div>
-                        </div>
-                        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">
-                          Live
-                        </div>
-                      </div>
-
-                      <div className="mt-4 rounded-xl border border-white/10 bg-[#09090b] p-3.5">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                          Public URL
-                        </div>
-                        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="font-mono text-sm text-zinc-200 break-all select-all">
-                            {publicUrl}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              onClick={copyUrl}
-                              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-zinc-200 transition hover:bg-white/[0.08]"
-                            >
-                              {copied ? (
-                                <>
-                                  <Check size={14} className="text-emerald-400" />
-                                  <span className="text-emerald-400">Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={14} />
-                                  Copy
-                                </>
-                              )}
-                            </button>
-                            <a
-                              href={publicUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-2 rounded-lg bg-white px-3.5 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
-                            >
-                              <ExternalLink size={14} />
-                              Open
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            ) : (
+              <div className="mt-3">
+                <p className="font-mono text-xl font-bold tracking-[0.25em] text-white">{pairing.code}</p>
+                <p className="mt-1 text-[11px] text-zinc-500">Enter this code into your DeployX Agent window.</p>
+                <button onClick={() => setAgentRequired(false)} className="mt-2 text-[11px] text-zinc-400 underline">
+                  Dismiss
+                </button>
               </div>
             )}
-
-            {/* Paused URL Box */}
-            {statusPaused && (
-              <div className="mt-7 rounded-2xl border border-yellow-500/10 bg-yellow-500/[0.03] p-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-yellow-500/70">
-                  Public URL
-                </p>
-                <p className="mt-2 font-mono text-sm text-zinc-500">
-                  — (Project paused — no public URL)
-                </p>
-              </div>
-            )}
-
-            {/* Controls (Pause / Resume / Delete) */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              {isLive && (
-                <button
-                  onClick={pauseDeployment}
-                  disabled={actionLoading}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:bg-white/5 disabled:opacity-40"
-                >
-                  {actionLoading ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Pause size={16} />
-                  )}
-                  Pause Project
-                </button>
-              )}
-
-              {statusPaused && (
-                <button
-                  onClick={resumeDeployment}
-                  disabled={actionLoading}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:opacity-40"
-                >
-                  {actionLoading ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Play size={16} />
-                  )}
-                  Resume Project
-                </button>
-              )}
-
-              {statusResuming && (
-                <button
-                  disabled
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/20 px-4 py-3 text-sm font-medium text-zinc-300 opacity-60"
-                >
-                  <Loader2 size={16} className="animate-spin" />
-                  Resuming...
-                </button>
-              )}
-
-              <button
-                onClick={deleteDeployment}
-                disabled={actionLoading || deploying}
-                className="flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm font-medium text-red-400 transition hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-40"
-              >
-                {actionLoading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Trash2 size={16} />
-                )}
-                Delete Deployment
-              </button>
-            </div>
-
-            {/* Technical Information */}
-            <div className="mt-5 flex flex-wrap gap-5 text-xs text-zinc-500">
-              {deployment.port && <span>Port: {deployment.port}</span>}
-              {deployment.localUrl && <span>Local: {deployment.localUrl}</span>}
-              <span>Status: {currentStatus}</span>
-              {deployment.id && (
-                <span className="font-mono">ID: {deployment.id}</span>
-              )}
-              {deployment.agentDeploymentId &&
-                deployment.agentDeploymentId !== deployment.id && (
-                  <span className="font-mono">
-                    Agent ID: {deployment.agentDeploymentId}
-                  </span>
-                )}
-            </div>
           </div>
         )}
       </div>
+
+      {/* Active Deployment Details Section */}
+      {deployment && (
+        <div className="mt-6 rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5 shadow-lg">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-4">
+            <div>
+              <p className="font-mono text-[11px] text-zinc-500 uppercase tracking-wider">
+                ACTIVE DEPLOYMENT
+              </p>
+              <h2 className="mt-1 text-lg font-bold text-white">
+                {deployment.project?.name || file?.name.replace(/\.zip$/i, '') || 'Project'}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusBadge status={deployment.status} />
+              <Link
+                href={`/dashboard/deployments/${deployment.id}`}
+                className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs text-zinc-400 hover:text-white transition"
+              >
+                <span>View Details</span>
+                <ChevronRight size={13} />
+              </Link>
+            </div>
+          </div>
+
+          {/* Pipeline milestones */}
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: 'Uploaded', done: isUploaded },
+              { label: 'Built', done: isBuilt },
+              { label: 'Running', done: isRunning },
+              { label: 'Public', done: isPublic },
+            ].map((step) => (
+              <div
+                key={step.label}
+                className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-[#08090a] px-3 py-2"
+              >
+                <div
+                  className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                    step.done
+                      ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                      : 'border border-white/[0.06] bg-white/[0.02] text-zinc-600'
+                  }`}
+                >
+                  {step.done ? <Check size={11} strokeWidth={2.5} /> : <div className="h-1 w-1 rounded-full bg-zinc-600" />}
+                </div>
+                <span className={`text-xs ${step.done ? 'text-zinc-200' : 'text-zinc-500'}`}>
+                  {step.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Terminal viewport */}
+          <div className="mt-4">
+            <DeploymentTerminal
+              logs={logs}
+              status={deployment.status}
+              projectName={deployment.project?.name}
+              deploymentId={deployment.id}
+            />
+          </div>
+
+          {/* Public URL Live Banner */}
+          {isLive && publicUrl && (
+            <div className="mt-4 rounded-lg border border-emerald-500/25 bg-[#08090a] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+                    <Globe size={13} />
+                    <span>YOUR PUBLIC URL</span>
+                  </div>
+                  <a
+                    href={publicUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 block font-mono text-sm font-semibold text-white hover:underline break-all"
+                  >
+                    {publicUrl}
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => void copyUrl()}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300 hover:text-white transition"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={12} className="text-emerald-400" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} />
+                        <span>Copy URL</span>
+                      </>
+                    )}
+                  </button>
+
+                  <a
+                    href={publicUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition"
+                  >
+                    <span>Open Project</span>
+                    <ExternalLink size={13} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Controls: Pause / Resume / Delete */}
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.08] pt-4">
+            {isLive && (
+              <button
+                onClick={() => void pauseDeployment()}
+                disabled={actionLoading}
+                className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white transition disabled:opacity-40"
+              >
+                {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <Pause size={13} />}
+                <span>Pause</span>
+              </button>
+            )}
+
+            {statusPaused && (
+              <button
+                onClick={() => void resumeDeployment()}
+                disabled={actionLoading}
+                className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition disabled:opacity-40"
+              >
+                {actionLoading ? <Loader2 size={13} className="animate-spin text-emerald-400" /> : <Play size={13} />}
+                <span>Resume</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setDeleteOpen(true)}
+              disabled={actionLoading || deploying}
+              className="flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition disabled:opacity-40 ml-auto"
+            >
+              <Trash2 size={13} />
+              <span>Delete Deployment</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={deleteOpen}
+        title="Delete Deployment"
+        description="Permanently delete this deployment? The local Docker container and public tunnel will be stopped immediately."
+        confirmText="Delete Deployment"
+        cancelText="Cancel"
+        isDestructive={true}
+        isLoading={deleting}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </main>
   );
 }

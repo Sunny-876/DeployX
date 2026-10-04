@@ -26,8 +26,13 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
       setError('Please fill in all fields.');
+      return;
+    }
+
+    if (name.trim().length < 2) {
+      setError('Name must be at least 2 characters long.');
       return;
     }
 
@@ -44,69 +49,90 @@ export default function RegisterPage() {
     setSubmitting(true);
     setError(null);
 
-    const result = await register(name, email, password);
+    const result = await register(name.trim(), email.trim(), password);
 
     if (result.success) {
       router.push('/dashboard');
     } else {
-      setError(result.error || 'Failed to create account.');
+      let msg = result.error || 'Failed to create account.';
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes('prisma') ||
+        lower.includes('internal server') ||
+        lower.includes('econnrefused') ||
+        lower.includes('failed to fetch')
+      ) {
+        msg = 'Unable to reach the authentication service. Please try again in a few moments.';
+      } else if (lower.includes('already exists') || lower.includes('unique constraint') || lower.includes('conflict')) {
+        msg = 'An account with this email address already exists.';
+      }
+      setError(msg);
       setSubmitting(false);
     }
   };
 
   if (authLoading || user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0b0b0d]">
-        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+      <div className="min-h-screen flex items-center justify-center bg-[#08090a]">
+        <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 bg-[#0b0b0d] text-white">
-      <div className="w-full max-w-sm">
-        {/* Logo & Header */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black mb-4 shadow-sm">
-            <Rocket size={20} strokeWidth={2.5} />
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">DeployX</h1>
-          <p className="text-sm text-zinc-400 mt-1">Create your account</p>
+    <div className="relative min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-[#08090a] text-[#ededef]">
+      {/* Subtle subdued background vignette */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="h-72 w-72 rounded-full bg-white/[0.02] blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-[360px]">
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center mb-6">
+          <Link
+            href="/"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-black mb-3.5 shadow-sm transition hover:opacity-90"
+          >
+            <Rocket size={18} strokeWidth={2.5} />
+          </Link>
+          <h1 className="text-xl font-bold tracking-tight text-white">Create your DeployX account</h1>
+          <p className="text-xs text-zinc-400 mt-1">Deploy and share projects from your own PC.</p>
         </div>
 
-        {/* Card Form */}
-        <div className="rounded-2xl border border-white/[0.08] bg-[#121215] p-6 shadow-xl">
+        {/* Compact Authentication Panel */}
+        <div className="rounded-xl border border-white/[0.08] bg-[#0d0f12] p-5 shadow-2xl">
           {error && (
-            <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-400">
-              <AlertCircle size={15} className="shrink-0" />
+            <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">
+              <AlertCircle size={14} className="mt-0.5 shrink-0 text-rose-400" />
               <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label
                 htmlFor="name"
-                className="block text-xs font-medium text-zinc-300 mb-1.5"
+                className="block text-xs font-medium text-zinc-300 mb-1"
               >
-                Name
+                Full Name
               </label>
               <input
                 id="name"
                 type="text"
                 autoComplete="name"
                 required
+                disabled={submitting}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Alex Smith"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.05]"
+                className="w-full rounded-lg border border-white/10 bg-[#08090a] px-3 py-2 text-xs text-white placeholder-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.02] disabled:opacity-50"
               />
             </div>
 
             <div>
               <label
                 htmlFor="email"
-                className="block text-xs font-medium text-zinc-300 mb-1.5"
+                className="block text-xs font-medium text-zinc-300 mb-1"
               >
                 Email
               </label>
@@ -115,17 +141,18 @@ export default function RegisterPage() {
                 type="email"
                 autoComplete="email"
                 required
+                disabled={submitting}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@example.com"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.05]"
+                placeholder="name@example.com"
+                className="w-full rounded-lg border border-white/10 bg-[#08090a] px-3 py-2 text-xs text-white placeholder-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.02] disabled:opacity-50"
               />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="block text-xs font-medium text-zinc-300 mb-1.5"
+                className="block text-xs font-medium text-zinc-300 mb-1"
               >
                 Password
               </label>
@@ -134,40 +161,42 @@ export default function RegisterPage() {
                 type="password"
                 autoComplete="new-password"
                 required
+                disabled={submitting}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.05]"
+                placeholder="At least 6 characters"
+                className="w-full rounded-lg border border-white/10 bg-[#08090a] px-3 py-2 text-xs text-white placeholder-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.02] disabled:opacity-50"
               />
             </div>
 
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-xs font-medium text-zinc-300 mb-1.5"
+                className="block text-xs font-medium text-zinc-300 mb-1"
               >
-                Confirm password
+                Confirm Password
               </label>
               <input
                 id="confirmPassword"
                 type="password"
                 autoComplete="new-password"
                 required
+                disabled={submitting}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.05]"
+                placeholder="Repeat password"
+                className="w-full rounded-lg border border-white/10 bg-[#08090a] px-3 py-2 text-xs text-white placeholder-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.02] disabled:opacity-50"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 w-full flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="mt-2 w-full flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2 size={13} className="animate-spin" />
                   <span>Creating account...</span>
                 </>
               ) : (
@@ -178,13 +207,13 @@ export default function RegisterPage() {
         </div>
 
         {/* Footer switch link */}
-        <p className="mt-6 text-center text-xs text-zinc-500">
+        <p className="mt-5 text-center text-xs text-zinc-400">
           Already have an account?{' '}
           <Link
             href="/login"
-            className="text-zinc-300 hover:text-white transition underline underline-offset-4"
+            className="text-white hover:underline transition font-medium underline-offset-4"
           >
-            Login
+            Log in
           </Link>
         </p>
       </div>
