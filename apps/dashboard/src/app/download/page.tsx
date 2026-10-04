@@ -1,8 +1,10 @@
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Cpu, Download, ShieldCheck } from 'lucide-react';
-export default function DownloadPage() {
-  const downloadUrl = process.env.NEXT_PUBLIC_AGENT_DOWNLOAD_URL;
+import { ArrowLeft, CheckCircle2, Cpu, Download, ExternalLink, ShieldCheck } from 'lucide-react';
 
+const DOWNLOAD_URL = 'https://github.com/Sunny-876/DeployX/releases/download/v0.1.1/DeployX-Agent-Setup-0.1.1.exe';
+const RELEASE_NOTES_URL = 'https://github.com/Sunny-876/DeployX/releases/tag/v0.1.1';
+
+export default function DownloadPage() {
   return (
     <main className="min-h-screen bg-[#0b0b0d] px-4 py-12 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
@@ -26,40 +28,39 @@ export default function DownloadPage() {
             Run your projects locally, connect your private Docker runtime, and share a temporary public link from your own PC.
           </p>
 
-          {downloadUrl ? (
-            <div className="mt-8 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2 font-semibold text-white">
-                    <Download size={18} className="text-emerald-400" />
-                    DeployX Agent v0.1.0-beta.1 for Windows
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    Standalone installer (40.6 MB) • Built with Inno Setup • SHA-256 verified
-                  </p>
+          <div className="mt-8 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <Download size={18} className="text-emerald-400" />
+                  DeployX Agent v0.1.1
                 </div>
-                <a
-                  href={downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400"
-                >
-                  <Download size={16} />
-                  Download for Windows
-                </a>
+                <p className="mt-1 text-xs text-zinc-400">
+                  Standalone Windows installer (40.6 MB) • Built with Inno Setup • SHA-256 verified
+                </p>
+                <div className="mt-2.5">
+                  <a
+                    href={RELEASE_NOTES_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 hover:underline"
+                  >
+                    View release notes
+                    <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100">
-              <div className="flex items-center gap-2 font-medium text-amber-200">
+              <a
+                href={DOWNLOAD_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400 sm:w-auto"
+              >
                 <Download size={16} />
-                Windows installer — coming soon
-              </div>
-              <p className="mt-2 text-sm leading-6 text-amber-50/90">
-                A public download artifact is not hosted yet, so this page explains the installation flow without inventing a URL.
-              </p>
+                Download for Windows
+              </a>
             </div>
-          )}
+          </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-[#0d0d11] p-4">
