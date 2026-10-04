@@ -26,7 +26,7 @@ PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
 CreateAppDir=yes
 AllowNoIcons=no
-CloseApplications=no
+CloseApplications=force
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -71,3 +71,15 @@ Root: HKCU; Subkey: "Software\DeployX\Agent"; ValueType: string; ValueName: "Con
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\DeployX\logs"
+
+[Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  // Terminate any running DeployX Agent processes so node.exe / cloudflared.exe are not locked
+  Exec('powershell.exe', '-NoProfile -ExecutionPolicy Bypass -Command "Get-Process | Where-Object { $_.Path -like ''*DeployX Agent*'' } | Stop-Process -Force -ErrorAction SilentlyContinue"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('cmd.exe', '/c taskkill /f /fi "WINDOWTITLE eq *DeployX Agent*" >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(500);
+  Result := '';
+end;
