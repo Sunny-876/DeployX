@@ -9,6 +9,8 @@ import {
 import { createHash, randomBytes, randomInt } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { containerStateToStatus } from '../deployments/runtime-status.js';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const PAIRING_TTL_MS = Number(process.env.AGENT_PAIRING_TTL_MS) || 10 * 60 * 1000;
 export const HEARTBEAT_INTERVAL_MS = Number(process.env.AGENT_HEARTBEAT_INTERVAL_MS) || 15 * 1000;
@@ -70,7 +72,7 @@ export class AgentsService {
   }
 
   async claimPairing(data: { code?: string; name?: string; version?: string; hostname?: string }) {
-    const code = (data?.code || '').trim();
+    const code = (data?.code || '').replace(/\D/g, '').trim();
     if (!/^\d{6}$/.test(code)) {
       throw new BadRequestException('A 6-digit pairing code is required');
     }
@@ -628,5 +630,32 @@ export class AgentsService {
     }
 
     return cmd;
+  }
+
+  async getDeploymentArchivePath(deploymentId: string, userId: string): Promise<string> {
+    const deployment = await this.prisma.deployment.findUnique({
+      where: { id: deploymentId },
+      include: { project: true },
+    });
+    if (!deployment) {
+      throw new NotFoundException('Deployment not found');
+    }
+    if (deployment.project && deployment.project.userId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const uploadRoot = path.resolve(process.cwd(), 'uploads');
+    const candidates = [
+      path.join(uploadRoot, deployment.projectId, 'archive.zip'),
+      deployment.projectPath ? path.join(path.dirname(deployment.projectPath), 'archive.zip') : '',
+      deployment.projectPath ? path.join(deployment.projectPath, 'archive.zip') : '',
+      deployment.projectPath ? `${deployment.projectPath}.zip` : '',
+    ].filter(Boolean);
+
+    const found = candidates.find((p) => fs.existsSync(p));
+    if (!found) {
+      throw new NotFoundException('Project archive not found on server');
+    }
+    return found;
   }
 }

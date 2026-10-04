@@ -1,5 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
+import { execSync } from 'child_process';
 import { clearIdentity, loadIdentity, resolveAgentDataDir, saveIdentity } from './agent-identity.store';
 import { RuntimeService } from '../runtime/runtime.service';
 import { DeploymentManagerService } from '../deployment/deployment-manager.service';
@@ -76,7 +79,7 @@ export class PairingService implements OnModuleInit {
   }
 
   async pairWithCode(code: string, name?: string) {
-    const cleaned = (code || '').trim();
+    const cleaned = (code || '').replace(/\D/g, '').trim();
     if (!/^\d{6}$/.test(cleaned)) {
       throw new Error('A 6-digit pairing code is required');
     }
@@ -201,8 +204,9 @@ export class PairingService implements OnModuleInit {
       });
 
       if (response.status === 401) {
-        this.logger.warn('Runtime sync rejected (revoked agent?).');
-        return { paired: true, sync: 'rejected' };
+        this.logger.warn('Agent credential rejected (revoked or expired). Clearing stale local identity so you can pair freshly.');
+        clearIdentity();
+        return { paired: false, sync: 'rejected' };
       }
 
       if (!response.ok) {
@@ -251,8 +255,9 @@ export class PairingService implements OnModuleInit {
         signal: AbortSignal.timeout(15000),
       });
       if (response.status === 401) {
-        this.logger.warn('Agent credential rejected (revoked?). Unpair and pair again.');
-        return { paired: true, heartbeat: 'rejected' };
+        this.logger.warn('Agent credential rejected (revoked or expired). Clearing stale local identity.');
+        clearIdentity();
+        return { paired: false, heartbeat: 'rejected' };
       }
       if (!response.ok) {
         if (now) throw new Error(`Heartbeat failed with ${response.status}`);
@@ -304,6 +309,12 @@ export class PairingService implements OnModuleInit {
         signal: AbortSignal.timeout(5000),
       });
 
+      if (response.status === 401) {
+        this.logger.warn('Agent credential rejected during command polling. Clearing stale local identity.');
+        clearIdentity();
+        return;
+      }
+
       if (!response.ok) return;
 
       const data = await response.json().catch(() => null);
@@ -351,7 +362,13 @@ export class PairingService implements OnModuleInit {
         }
         case 'DEPLOY': {
           const deployId = payload.deploymentId || payload.id || `deploy-${Date.now()}`;
-          const projPath = payload.projectPath || '.';
+          let projPath = payload.projectPath || '.';
+
+          if (payload.archiveUrl && (!fs.existsSync(projPath) || !fs.statSync(projPath).isDirectory())) {
+            this.logger.log(`Downloading project archive for deployment ${deployId}...`);
+            projPath = await this.downloadAndExtractArchive(deployId, payload.archiveUrl, agentToken);
+          }
+
           result = await this.manager.deploy(deployId, projPath, {
             projectId: payload.projectId,
             userId: payload.userId,
@@ -385,5 +402,49 @@ export class PairingService implements OnModuleInit {
     }
 
     void this.syncRuntime().catch(() => {});
+  }
+
+  private async downloadAndExtractArchive(
+    deploymentId: string,
+    archiveUrl: string,
+    agentToken: string,
+  ): Promise<string> {
+    const targetDir = path.join(resolveAgentDataDir(), 'projects', deploymentId);
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    const zipFile = path.join(targetDir, 'archive.zip');
+
+    const res = await fetch(archiveUrl, {
+      headers: {
+        Authorization: `Bearer ${agentToken}`,
+      },
+      signal: AbortSignal.timeout(60000),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to download project archive: HTTP ${res.status}`);
+    }
+
+    const arrayBuffer = await res.arrayBuffer();
+    fs.writeFileSync(zipFile, Buffer.from(arrayBuffer));
+
+    try {
+      execSync(`tar.exe -xf "${zipFile}" -C "${targetDir}"`, { stdio: 'ignore' });
+    } catch {
+      try {
+        execSync(
+          `powershell.exe -NoProfile -Command "Expand-Archive -Path '${zipFile}' -DestinationPath '${targetDir}' -Force"`,
+          { stdio: 'ignore' },
+        );
+      } catch {
+        execSync(`tar -xf "${zipFile}" -C "${targetDir}"`, { stdio: 'ignore' });
+      }
+    }
+
+    try {
+      if (fs.existsSync(zipFile)) fs.unlinkSync(zipFile);
+    } catch {}
+
+    return targetDir;
   }
 }

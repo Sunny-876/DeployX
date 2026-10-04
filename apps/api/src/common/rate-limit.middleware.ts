@@ -11,6 +11,10 @@ export class RateLimitMiddleware implements NestMiddleware {
   private readonly store = new Map<string, RateLimitRecord>();
 
   use(req: Request, res: Response, next: NextFunction) {
+    if (req.method === 'OPTIONS') {
+      return next();
+    }
+
     const forwarded = req.headers['x-forwarded-for'];
     const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : (req.ip || req.socket.remoteAddress || '127.0.0.1');
     const path = req.path || req.url || '';

@@ -1,11 +1,11 @@
 ; DeployX Agent Inno Setup script
-; This script packages the built Agent and its runtime files for a clean Windows install.
+; Packages the standalone Agent, bundled Node.js runtime, and dependencies for Windows.
 
 #define MyAppName "DeployX Agent"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.1.1"
 #define MyAppPublisher "DeployX"
-#define MyAppURL "https://deployx.example.com"
-#define MyAppExeName "node.exe"
+#define MyAppURL "https://deploy-x-virid.vercel.app"
+#define MyAppExeName "DeployX-Agent.bat"
 
 [Setup]
 AppId={{A83D2B93-D38A-54D3-AF55-8C0D348E6F17}
@@ -17,13 +17,13 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\DeployX Agent
 DefaultGroupName={#MyAppName}
-Compression=lzma
+Compression=lzma2/max
 SolidCompression=yes
-OutputDir=..\dist\agent\windows
+OutputDir=..\..\..\releases
 OutputBaseFilename=DeployX-Agent-Setup-{#MyAppVersion}
 UninstallDisplayIcon={app}\node.exe
 PrivilegesRequired=lowest
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 CreateAppDir=yes
 AllowNoIcons=no
 CloseApplications=no
@@ -36,29 +36,38 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Name: "startup"; Description: "Start DeployX Agent with Windows"; GroupDescription: "Startup:"; Flags: unchecked
 
 [Files]
-Source: "..\dist\**"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "..\config.json"; DestDir: "{userappdata}\DeployX"; Flags: onlyifdoesntexist
+; Standalone Node.js runtime executable
+Source: "..\package-staging\node.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Application entry and configuration
+Source: "..\package-staging\config.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\package-staging\DeployX-Agent.bat"; DestDir: "{app}"; Flags: ignoreversion
+; Compiled application bundle
+Source: "..\package-staging\dist\*"; DestDir: "{app}\dist"; Flags: recursesubdirs createallsubdirs ignoreversion
+; Isolated production runtime dependencies
+Source: "..\package-staging\node_modules\*"; DestDir: "{app}\node_modules"; Flags: recursesubdirs createallsubdirs ignoreversion
+; Optional Cloudflare tunnel binary if present
+Source: "..\package-staging\cloudflared.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; Default user configuration (preserves existing configuration on update)
+Source: "..\package-staging\config.json"; DestDir: "{userappdata}\DeployX"; Flags: onlyifdoesntexist
 
 [Dirs]
 Name: "{localappdata}\DeployX\logs"
-Name: "{userappdata}\DeployX\config"
+Name: "{userappdata}\DeployX"
 
 [Icons]
-Name: "{group}\DeployX Agent"; Filename: "{app}\node.exe"; Parameters: "dist\main.js"; WorkingDir: "{app}"
-Name: "{group}\Open Agent UI"; Filename: "https://localhost:4100"
-Name: "{commondesktop}\DeployX Agent"; Filename: "{app}\node.exe"; Parameters: "dist\main.js"; WorkingDir: "{app}"; Tasks: desktopicon
+; Start Menu shortcuts (per-user in lowest privileges mode)
+Name: "{group}\DeployX Agent"; Filename: "{app}\DeployX-Agent.bat"; WorkingDir: "{app}"; IconFilename: "{app}\node.exe"
+Name: "{group}\Open Agent UI"; Filename: "http://localhost:4100"
+Name: "{group}\Uninstall DeployX Agent"; Filename: "{uninstallexe}"
+; Desktop shortcut (uses {autodesktop} which resolves to {userdesktop} in lowest privileges mode, avoiding 0x80070005)
+Name: "{autodesktop}\DeployX Agent"; Filename: "{app}\DeployX-Agent.bat"; WorkingDir: "{app}"; Tasks: desktopicon; IconFilename: "{app}\node.exe"
 
 [Run]
-Filename: "{app}\node.exe"; Parameters: "dist\main.js"; WorkingDir: "{app}"; Description: "Launch DeployX Agent"; Flags: nowait postinstall unchecked
+Filename: "{app}\DeployX-Agent.bat"; Description: "Launch DeployX Agent"; Flags: nowait postinstall shellexec
+
 
 [Registry]
 Root: HKCU; Subkey: "Software\DeployX\Agent"; ValueType: string; ValueName: "ConfigDir"; ValueData: "{userappdata}\DeployX"; Flags: uninsdeletekey
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\DeployX\logs"
-
-[Code]
-function ShouldSkipPage(PageID: Integer): Boolean;
-begin
-  Result := False;
-end;

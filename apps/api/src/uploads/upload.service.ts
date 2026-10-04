@@ -11,6 +11,7 @@ import * as unzipper from 'unzipper';
 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AgentService } from '../agent/agent.service.js';
+import { AgentsService } from '../agents/agents.service.js';
 import { toRuntimeStatus } from '../deployments/runtime-status.js';
 
 export interface ZipLimitsConfig {
@@ -32,6 +33,7 @@ export class UploadService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly agent: AgentService,
+    private readonly agents: AgentsService,
   ) {
     if (!fs.existsSync(this.uploadRoot)) {
       fs.mkdirSync(this.uploadRoot, { recursive: true });
@@ -143,6 +145,13 @@ export class UploadService {
 
       throw new BadRequestException(msg);
     } finally {
+      if (fs.existsSync(zipPath)) {
+        try {
+          const archiveTarget = path.join(this.uploadRoot, projectId, 'archive.zip');
+          fs.mkdirSync(path.dirname(archiveTarget), { recursive: true });
+          fs.copyFileSync(zipPath, archiveTarget);
+        } catch {}
+      }
       if (isTempUpload && fs.existsSync(zipPath)) {
         try {
           fs.unlinkSync(zipPath);
@@ -217,9 +226,18 @@ export class UploadService {
     // --------------------------------
     // CREATE CURRENT DEPLOYMENT
     // --------------------------------
+    let agentId: string | undefined;
+    if (userId) {
+      const onlineAgent = await this.agents.onlineAgentForUser(userId).catch(() => null);
+      if (onlineAgent) {
+        agentId = onlineAgent.id;
+      }
+    }
+
     const deployment = await this.prisma.deployment.create({
       data: {
         projectId: project.id,
+        agentId,
         status: 'BUILDING',
         projectPath,
       },
@@ -449,84 +467,130 @@ export class UploadService {
 
       const deployPath = this.resolveProjectPath(projectPath);
 
-      const agentDeployment = await this.agent.deploy(
-        deployPath,
-        deploymentId,
-        context,
-      );
+      const targetAgent = context?.userId
+        ? await this.agents.onlineAgentForUser(context.userId).catch(() => null)
+        : null;
 
-      if (!agentDeployment?.success || agentDeployment?.status === 'FAILED') {
-        throw new Error(
-          agentDeployment?.error || 'Agent deployment failed',
-        );
-      }
+      if (targetAgent) {
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: { agentId: targetAgent.id },
+        }).catch(() => {});
 
-      const publicUrl = agentDeployment.publicUrl;
+        const apiBase =
+          process.env.PUBLIC_API_URL ||
+          process.env.API_URL ||
+          'https://deployx-lfl1.onrender.com';
+        const archiveUrl = `${apiBase.replace(/\/+$/, '')}/agents/commands/archive/${deploymentId}`;
 
-      await this.prisma.deployment.update({
-        where: { id: deploymentId },
-        data: {
-          status: toRuntimeStatus(agentDeployment.status) || 'RUNNING',
-          url: publicUrl,
-          commitHash: agentDeployment.deploymentId || deploymentId,
-          containerId: agentDeployment.containerId || null,
-          containerName: agentDeployment.name || null,
-          port: agentDeployment.port ?? null,
-          projectPath: deployPath,
-          lastSyncedAt: new Date(),
-        },
-      });
-
-      await this.prisma.deploymentLog.create({
-        data: {
-          deploymentId,
-          message: 'Application started successfully.',
-        },
-      });
-
-      if (agentDeployment.port) {
         await this.prisma.deploymentLog.create({
           data: {
             deploymentId,
-            message: `Application port: ${agentDeployment.port}`,
+            message: `Deployment queued for DeployX Agent (${targetAgent.name || targetAgent.hostname || 'My PC'})`,
           },
         });
+
+        await this.agents.queueCommand({
+          agentId: targetAgent.id,
+          userId: context!.userId!,
+          type: 'DEPLOY',
+          payload: {
+            deploymentId,
+            archiveUrl,
+            projectPath: deployPath,
+            projectId: context?.projectId,
+            userId: context?.userId,
+            projectName: context?.projectName,
+          },
+        });
+        return;
       }
 
-      await this.prisma.deploymentLog.create({
-        data: {
+      if (this.agent.agentUrl) {
+        const agentDeployment = await this.agent.deploy(
+          deployPath,
           deploymentId,
-          message: 'Health check passed.',
-        },
-      });
+          context,
+        );
 
-      await this.prisma.deploymentLog.create({
-        data: {
-          deploymentId,
-          message: 'Creating temporary public URL...',
-        },
-      });
+        if (!agentDeployment?.success || agentDeployment?.status === 'FAILED') {
+          throw new Error(
+            agentDeployment?.error || 'Agent deployment failed',
+          );
+        }
 
-      await this.prisma.deploymentLog.create({
-        data: {
-          deploymentId,
-          message: 'Public tunnel created.',
-        },
-      });
+        const publicUrl = agentDeployment.publicUrl;
 
-      await this.prisma.deploymentLog.create({
-        data: {
-          deploymentId,
-          message: `Public URL: ${publicUrl}`,
-        },
-      });
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: {
+            status: toRuntimeStatus(agentDeployment.status) || 'RUNNING',
+            url: publicUrl,
+            commitHash: agentDeployment.deploymentId || deploymentId,
+            containerId: agentDeployment.containerId || null,
+            containerName: agentDeployment.name || null,
+            port: agentDeployment.port ?? null,
+            projectPath: deployPath,
+            lastSyncedAt: new Date(),
+          },
+        });
 
-      await this.prisma.deploymentLog.create({
-        data: {
-          deploymentId,
-          message: 'Deployment ready.',
-        },
-      });
+        await this.prisma.deploymentLog.create({
+          data: {
+            deploymentId,
+            message: 'Application started successfully.',
+          },
+        });
+
+        if (agentDeployment.port) {
+          await this.prisma.deploymentLog.create({
+            data: {
+              deploymentId,
+              message: `Application port: ${agentDeployment.port}`,
+            },
+          });
+        }
+
+        await this.prisma.deploymentLog.create({
+          data: {
+            deploymentId,
+            message: 'Health check passed.',
+          },
+        });
+
+        await this.prisma.deploymentLog.create({
+          data: {
+            deploymentId,
+            message: 'Creating temporary public URL...',
+          },
+        });
+
+        await this.prisma.deploymentLog.create({
+          data: {
+            deploymentId,
+            message: 'Public tunnel created.',
+          },
+        });
+
+        await this.prisma.deploymentLog.create({
+          data: {
+            deploymentId,
+            message: `Public URL: ${publicUrl}`,
+          },
+        });
+
+        await this.prisma.deploymentLog.create({
+          data: {
+            deploymentId,
+            message: 'Deployment ready.',
+          },
+        });
+        return;
+      }
+
+      throw new Error(
+        'Connect your DeployX Agent before deploying. Your PC Agent must be running and paired.',
+      );
     } catch (error) {
       const errorMsg =
         error instanceof Error ? error.message : String(error);

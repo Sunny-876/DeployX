@@ -14,26 +14,7 @@ async function bootstrap() {
   getJwtSecret();
   const app = await NestFactory.create(AppModule);
 
-  // Security Headers Middleware
-  app.use((req: any, res: any, next: () => void) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    next();
-  });
-
-  // Rate Limiting Middleware
-  const rateLimiter = new RateLimitMiddleware();
-  app.use(rateLimiter.use.bind(rateLimiter));
-
-  // Global Exception Filter (no stack trace leaks to user)
-  app.useGlobalFilters(new HttpExceptionFilter());
-
-  app.use(cookieParser());
-
-  // Strict CORS configuration
+  // 1. Strict CORS configuration (must be registered FIRST so preflight OPTIONS are answered immediately)
   const allowedOrigins = getCorsAllowedOrigins();
 
   app.enableCors({
@@ -53,7 +34,28 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     exposedHeaders: ['Set-Cookie'],
     credentials: true,
+    optionsSuccessStatus: 204,
   });
+
+  // 2. Security Headers Middleware
+  app.use((req: any, res: any, next: () => void) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+  });
+
+  // 3. Rate Limiting Middleware
+  const rateLimiter = new RateLimitMiddleware();
+  app.use(rateLimiter.use.bind(rateLimiter));
+
+  // 4. Global Exception Filter (no stack trace leaks to user)
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // 5. Cookie Parser
+  app.use(cookieParser());
 
   app.enableShutdownHooks();
 

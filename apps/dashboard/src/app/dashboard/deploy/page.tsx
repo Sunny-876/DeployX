@@ -104,21 +104,26 @@ export default function DeployPage() {
    */
 
   useEffect(() => {
+    let mounted = true;
     const checkApiHealth = async () => {
       try {
         const response = await fetch(`${API_URL}/health`, {
           cache: 'no-store',
           credentials: 'include',
         });
-        if (!response.ok) {
-          setError(`Cannot connect to DeployX API at ${API_URL}.`);
+        if (response.ok && mounted) {
+          setError((prev) => (prev?.includes('Cannot connect to DeployX API') ? null : prev));
         }
       } catch {
-        setError(`Cannot connect to DeployX API at ${API_URL}.`);
+        // Do not block initial render with an error before the user even uploads a project.
+        // Cold-starting APIs will be reached when the user triggers the deployment.
       }
     };
 
     void checkApiHealth();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   /*

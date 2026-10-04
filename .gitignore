@@ -30,6 +30,8 @@ temp/
 builder-test/
 builder-test.zip
 apps/agent-windows-package/
+apps/agent/package-staging/
+agent-windows-package/
 *.zip
 *.mp4
 *.m4v

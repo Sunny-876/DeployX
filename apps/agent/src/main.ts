@@ -18,7 +18,7 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   console.log(`DeployX Agent running on http://localhost:${port}`);
 }

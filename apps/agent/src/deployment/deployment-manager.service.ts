@@ -18,6 +18,7 @@ import {
 import {
   TunnelService,
 } from '../tunnel/tunnel.service';
+import { resolveAgentDataDir } from '../pairing/agent-identity.store';
 
 @Injectable()
 export class DeploymentManagerService {
@@ -743,6 +744,7 @@ export class DeploymentManagerService {
       path.resolve(process.cwd(), '..', 'apps', 'api', 'uploads'),
       path.resolve(process.cwd(), '..', '..', 'runtime-projects'),
       path.resolve(process.cwd(), '..', '..', 'apps', 'api', 'uploads'),
+      path.resolve(resolveAgentDataDir(), 'projects'),
     ].map((root) => path.resolve(root));
 
     let resolved: string;

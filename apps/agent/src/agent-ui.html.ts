@@ -1,4 +1,4 @@
-﻿export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any): string {
+export function renderAgentOnboardingHtml(initialAgent: any, initialDocker: any): string {
   const safeInitialState = JSON.stringify({
     agent: initialAgent || {},
     docker: initialDocker || {},
@@ -206,7 +206,7 @@
       ` : `
         <div class="form-group">
           <label for="pairing-code">Pairing code</label>
-          <input id="pairing-code" type="text" maxlength="6" placeholder="123456" autocomplete="one-time-code" />
+          <input id="pairing-code" type="text" maxlength="12" placeholder="123456" autocomplete="one-time-code" onkeydown="if(event.key==='Enter') connectAgent()" />
         </div>
         <button id="connect-button" type="button" onclick="connectAgent()">Connect Account</button>
       `}
@@ -242,7 +242,7 @@
 
       async function connectAgent() {
         const input = document.getElementById('pairing-code');
-        const code = (input && input.value || '').trim();
+        const code = (input && input.value || '').replace(/\D/g, '').trim();
         const button = document.getElementById('connect-button');
 
         if (!/^\d{6}$/.test(code)) {

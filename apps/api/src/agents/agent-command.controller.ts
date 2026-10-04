@@ -6,8 +6,10 @@ import {
   HttpStatus,
   Param,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { AgentsService } from './agents.service.js';
 import { AgentAuthGuard } from './agent-auth.guard.js';
 import type { AgentRequestUser } from './agent-auth.guard.js';
@@ -49,5 +51,21 @@ export class AgentCommandController {
       commandId,
       body,
     );
+  }
+
+  @UseGuards(AgentAuthGuard)
+  @Get('archive/:deploymentId')
+  async downloadArchive(
+    @CurrentAgent() agent: AgentRequestUser,
+    @Param('deploymentId') deploymentId: string,
+    @Res() res: Response,
+  ) {
+    const archivePath = await this.agentsService.getDeploymentArchivePath(
+      deploymentId,
+      agent.userId,
+    );
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${deploymentId}.zip"`);
+    return res.sendFile(archivePath);
   }
 }
