@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { Navigation } from '../../components/Navigation';
+import { Sidebar } from '../../components/Sidebar';
+import { TopHeader } from '../../components/TopHeader';
 import { useAuth } from '../../lib/auth-context';
 
 export default function DashboardLayout({
@@ -13,6 +14,7 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -36,10 +38,19 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#08090a] text-[#ededef]">
-      <Navigation />
-      <div className="relative">
-        {children}
+    <div className="min-h-screen bg-[#08090a] text-[#ededef] flex">
+      {/* Universal Left Sidebar */}
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+
+      {/* Main Viewport Area */}
+      <div className="flex-1 flex flex-col min-w-0 md:pl-[250px]">
+        {/* Universal Top Header */}
+        <TopHeader onOpenMobileMenu={() => setMobileOpen(true)} />
+
+        {/* Main Page Content */}
+        <div className="flex-1 p-5 sm:p-7">
+          {children}
+        </div>
       </div>
     </div>
   );

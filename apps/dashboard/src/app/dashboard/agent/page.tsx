@@ -19,6 +19,7 @@ import {
   HardDrive,
   Copy,
   Loader2,
+  Settings,
 } from 'lucide-react';
 import { API_URL, formatDate } from '../../../lib/utils';
 import { useAgents } from '../../../components/useAgents';
@@ -156,122 +157,123 @@ export default function AgentDashboardPage() {
   };
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2">
-        <Link href="/dashboard" className="hover:text-white transition">
-          Dashboard
-        </Link>
-        <ChevronRight size={12} />
-        <span className="text-zinc-300">Agent</span>
-      </div>
-
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              DeployX Agent
-            </h1>
-            {online === true ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                Online
-              </span>
-            ) : online === false ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800/80 px-2.5 py-0.5 text-xs font-medium text-zinc-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
-                Offline
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800/80 px-2.5 py-0.5 text-xs font-medium text-zinc-400">
-                Checking...
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-zinc-400">
-            {online === true
-              ? 'Connected to your local machine. Deployments and Docker containers run directly on your hardware.'
-              : 'The background worker on your computer that builds and runs projects in Docker.'}
-          </p>
+    <div className="mx-auto max-w-6xl space-y-6">
+      {/* Breadcrumb & Header */}
+      <div>
+        <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2">
+          <Link href="/dashboard" className="hover:text-white transition">
+            Dashboard
+          </Link>
+          <ChevronRight size={12} />
+          <span className="text-zinc-300">Agent</span>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => void reload()}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#0d0f12] px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-white/20 hover:text-white transition"
-            title="Refresh agent status"
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            <span>Refresh</span>
-          </button>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-6">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                DeployX Agent
+              </h1>
+              {online === true ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-0.5 text-xs font-semibold text-emerald-400">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                  Online
+                </span>
+              ) : online === false ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800/80 px-3 py-0.5 text-xs font-medium text-zinc-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
+                  Offline
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800/80 px-3 py-0.5 text-xs font-medium text-zinc-400">
+                  Checking...
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs sm:text-sm text-zinc-400">
+              {online === true
+                ? 'Connected to your local machine. Deployments and Docker containers run directly on your hardware.'
+                : 'The background worker on your computer that builds and runs projects in Docker.'}
+            </p>
+          </div>
 
-          {online === true && (
+          {/* Actions */}
+          <div className="flex items-center gap-2.5">
             <button
-              onClick={() => setRevokeOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition"
-              title="Unlink agent"
+              onClick={() => void reload()}
+              className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0d0f14] px-3.5 py-2 text-xs font-medium text-zinc-300 hover:border-white/20 hover:text-white transition"
+              title="Refresh agent status"
             >
-              <Unplug size={13} />
-              <span>Unlink Agent</span>
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
             </button>
-          )}
+
+            {online === true && (
+              <button
+                onClick={() => setRevokeOpen(true)}
+                className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3.5 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                title="Unlink agent"
+              >
+                <Unplug size={13} />
+                <span>Unlink Agent</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
       {online === true && primary ? (
-        <div className="mt-6 space-y-6">
+        <div className="space-y-6">
           {/* Agent Spec Cards */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-4">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-4 sm:p-5">
               <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
                 MACHINE
               </span>
-              <p className="mt-1 font-mono text-sm font-semibold text-white truncate" title={primary.name || primary.hostname || 'PC'}>
+              <p className="mt-1.5 font-mono text-sm sm:text-base font-bold text-white truncate" title={primary.name || primary.hostname || 'PC'}>
                 {primary.name || primary.hostname || 'DESKTOP-PC'}
               </p>
             </div>
 
-            <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-4">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-4 sm:p-5">
               <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
                 DOCKER ENGINE
               </span>
-              <div className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-emerald-400">
+              <div className="mt-1.5 flex items-center gap-1.5 text-sm sm:text-base font-bold text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 <span>Ready</span>
               </div>
             </div>
 
-            <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-4">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-4 sm:p-5">
               <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
                 AGENT VERSION
               </span>
-              <p className="mt-1 font-mono text-sm font-semibold text-white">
+              <p className="mt-1.5 font-mono text-sm sm:text-base font-bold text-white">
                 v{primary.version || '0.1.2'}
               </p>
             </div>
 
-            <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-4">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-4 sm:p-5">
               <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
                 LAST HEARTBEAT
               </span>
-              <p className="mt-1 font-mono text-xs font-medium text-zinc-300 truncate">
+              <p className="mt-1.5 font-mono text-xs font-medium text-zinc-300 truncate">
                 {primary.lastSeenAt ? formatDate(primary.lastSeenAt) : 'Just now'}
               </p>
             </div>
           </div>
 
           {/* Running workloads overview */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-6">
               <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
-                <Layers size={14} />
+                <Layers size={15} />
                 <span>PROJECTS HOSTED</span>
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-bold tracking-tight text-white">
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-3xl font-bold tracking-tight text-white font-mono">
                   {projectCount ?? '—'}
                 </span>
                 <span className="text-xs text-zinc-500">total projects created</span>
@@ -281,13 +283,13 @@ export default function AgentDashboardPage() {
               </p>
             </div>
 
-            <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-6">
               <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
-                <Activity size={14} />
+                <Activity size={15} />
                 <span>ACTIVE CONTAINERS</span>
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-bold tracking-tight text-white">
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-3xl font-bold tracking-tight text-white font-mono">
                   {activeDeploymentsCount ?? '—'}
                 </span>
                 <span className="text-xs text-zinc-500">live deployments</span>
@@ -299,22 +301,22 @@ export default function AgentDashboardPage() {
           </div>
 
           {/* Connection Details */}
-          <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-6">
             <h3 className="text-sm font-semibold text-white">Runtime Architecture</h3>
             <div className="mt-3 space-y-2 text-xs font-mono text-zinc-400">
-              <div className="flex items-center justify-between border-b border-white/[0.04] py-2">
+              <div className="flex items-center justify-between border-b border-white/[0.04] py-2.5">
                 <span className="text-zinc-500">Agent Local Address</span>
                 <span className="text-zinc-300">http://127.0.0.1:4100</span>
               </div>
-              <div className="flex items-center justify-between border-b border-white/[0.04] py-2">
+              <div className="flex items-center justify-between border-b border-white/[0.04] py-2.5">
                 <span className="text-zinc-500">Target Operating System</span>
                 <span className="text-zinc-300">Windows 10 / 11 (x64)</span>
               </div>
-              <div className="flex items-center justify-between border-b border-white/[0.04] py-2">
+              <div className="flex items-center justify-between border-b border-white/[0.04] py-2.5">
                 <span className="text-zinc-500">Tunnel Provider</span>
                 <span className="text-zinc-300">Cloudflare Quick Tunnels (*.trycloudflare.com)</span>
               </div>
-              <div className="flex items-center justify-between py-2">
+              <div className="flex items-center justify-between py-2.5">
                 <span className="text-zinc-500">Container Isolation</span>
                 <span className="text-zinc-300">Docker Desktop WSL2 / Hyper-V Engine</span>
               </div>
@@ -323,9 +325,9 @@ export default function AgentDashboardPage() {
         </div>
       ) : (
         /* Disconnected State */
-        <div className="mt-6 space-y-6">
-          <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-8 text-center max-w-xl mx-auto">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-white/[0.08] bg-[#111317] text-zinc-400">
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-8 text-center max-w-xl mx-auto">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-[#14161f] text-zinc-400">
               <Cpu size={22} />
             </div>
 
@@ -339,7 +341,7 @@ export default function AgentDashboardPage() {
             {/* Pairing Box */}
             <div className="mt-6">
               {pairing ? (
-                <div className="rounded-lg border border-white/[0.12] bg-[#08090a] p-5">
+                <div className="rounded-2xl border border-white/[0.12] bg-[#08090a] p-5">
                   <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
                     6-DIGIT PAIRING CODE
                   </span>
@@ -365,7 +367,7 @@ export default function AgentDashboardPage() {
                   <div className="mt-3 flex items-center justify-center gap-2">
                     <button
                       onClick={cancelPairing}
-                      className="text-xs text-zinc-500 hover:text-zinc-300 transition"
+                      className="text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -376,7 +378,7 @@ export default function AgentDashboardPage() {
                   <button
                     onClick={() => void generateCode()}
                     disabled={pairLoading}
-                    className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition disabled:opacity-50 shadow-sm"
+                    className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-semibold text-black hover:bg-zinc-200 transition disabled:opacity-50 shadow-sm cursor-pointer"
                   >
                     {pairLoading ? <Loader2 size={13} className="animate-spin" /> : null}
                     <span>Connect Agent</span>
@@ -384,7 +386,7 @@ export default function AgentDashboardPage() {
 
                   <Link
                     href="/download"
-                    className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-[#111317] px-4 py-2 text-xs font-semibold text-zinc-300 hover:border-white/20 hover:text-white transition"
+                    className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-[#14161f] px-5 py-2.5 text-xs font-semibold text-zinc-300 hover:border-white/20 hover:text-white transition"
                   >
                     <Download size={13} />
                     <span>Download DeployX Agent</span>
@@ -399,7 +401,7 @@ export default function AgentDashboardPage() {
           </div>
 
           {/* Quick Setup Guide */}
-          <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-6 max-w-xl mx-auto">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-6 max-w-xl mx-auto">
             <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-zinc-400 mb-4">
               HOW TO CONNECT YOUR PC
             </h3>
@@ -456,6 +458,6 @@ export default function AgentDashboardPage() {
         onConfirm={() => void handleRevoke()}
         onCancel={() => setRevokeOpen(false)}
       />
-    </main>
+    </div>
   );
 }

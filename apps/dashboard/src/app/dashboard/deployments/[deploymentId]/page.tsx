@@ -129,7 +129,6 @@ export default function DeploymentDetailPage({
     };
   }, [deployment?.status, deploymentId]);
 
-  // Pause action
   const handlePause = async () => {
     if (!deployment) return;
     setActionLoading(true);
@@ -154,7 +153,6 @@ export default function DeploymentDetailPage({
     }
   };
 
-  // Resume action
   const handleResume = async () => {
     if (!deployment) return;
     setActionLoading(true);
@@ -179,7 +177,6 @@ export default function DeploymentDetailPage({
     }
   };
 
-  // Cancel action
   const handleCancel = async () => {
     if (!deployment) return;
     setActionLoading(true);
@@ -204,7 +201,6 @@ export default function DeploymentDetailPage({
     }
   };
 
-  // Delete action
   const handleDelete = async () => {
     if (!deployment) return;
     setDeleting(true);
@@ -247,16 +243,16 @@ export default function DeploymentDetailPage({
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-20 sm:px-6 text-center">
+      <div className="mx-auto max-w-5xl py-20 text-center">
         <Loader2 size={24} className="animate-spin mx-auto text-zinc-500 mb-3" />
         <p className="text-xs font-mono text-zinc-400">Loading deployment details...</p>
-      </main>
+      </div>
     );
   }
 
   if (!deployment) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-20 sm:px-6 text-center">
+      <div className="mx-auto max-w-5xl py-20 text-center">
         <AlertCircle size={32} className="mx-auto text-zinc-600 mb-3" />
         <h2 className="text-base font-semibold text-white">Deployment Not Found</h2>
         <p className="mt-1 text-xs text-zinc-500">
@@ -264,12 +260,12 @@ export default function DeploymentDetailPage({
         </p>
         <Link
           href="/dashboard/deployments"
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#0d0f12] px-3.5 py-1.5 text-xs font-medium text-zinc-200 hover:border-white/20 transition"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-[#0d0f14] px-4 py-2 text-xs font-medium text-zinc-200 hover:border-white/20 transition"
         >
           <ChevronLeft size={14} />
           Back to Deployments
         </Link>
-      </main>
+      </div>
     );
   }
 
@@ -277,15 +273,7 @@ export default function DeploymentDetailPage({
   const isReady = currentStatus === 'READY';
   const isPaused = currentStatus === 'PAUSED';
   const isFailed = currentStatus === 'FAILED';
-  const isPending =
-    currentStatus === 'BUILDING' ||
-    currentStatus === 'QUEUED' ||
-    currentStatus === 'STARTING' ||
-    currentStatus === 'RUNNING' ||
-    currentStatus === 'CREATING_TUNNEL' ||
-    currentStatus === 'RESUMING';
 
-  // Lifecycle stage checkmarks
   const isUploaded = !!deployment;
   const isBuilt =
     isReady ||
@@ -316,7 +304,7 @@ export default function DeploymentDetailPage({
   const isPublic = isReady && !!deployment.url;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-xs text-zinc-500">
         <Link href="/dashboard/deployments" className="hover:text-white transition">
@@ -338,10 +326,10 @@ export default function DeploymentDetailPage({
       </div>
 
       {/* Header */}
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-6">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               {deployment.project?.name || 'Project Deployment'}
             </h1>
             <StatusBadge status={deployment.status} />
@@ -374,7 +362,7 @@ export default function DeploymentDetailPage({
           <button
             onClick={() => void loadDeployment(true)}
             disabled={refreshing || actionLoading}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#0d0f12] px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0d0f14] px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:border-white/20 hover:text-white disabled:opacity-50"
             title="Refresh status"
           >
             <RefreshCw
@@ -389,7 +377,7 @@ export default function DeploymentDetailPage({
             <button
               onClick={() => void handleCancel()}
               disabled={actionLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20 disabled:opacity-50"
             >
               {actionLoading ? (
                 <Loader2 size={13} className="animate-spin text-rose-400" />
@@ -405,7 +393,7 @@ export default function DeploymentDetailPage({
             <button
               onClick={() => void handlePause()}
               disabled={actionLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#0d0f12] px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-[#0d0f14] px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:border-white/20 hover:text-white disabled:opacity-50"
             >
               {actionLoading ? (
                 <Loader2 size={13} className="animate-spin text-zinc-400" />
@@ -421,7 +409,7 @@ export default function DeploymentDetailPage({
             <button
               onClick={() => void handleResume()}
               disabled={actionLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-50"
             >
               {actionLoading ? (
                 <Loader2 size={13} className="animate-spin text-emerald-400" />
@@ -435,26 +423,26 @@ export default function DeploymentDetailPage({
           {/* Delete */}
           <button
             onClick={() => setDeleteOpen(true)}
-            className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-2 text-zinc-400 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 transition"
+            className="rounded-xl border border-white/[0.08] bg-[#0d0f14] p-2 text-zinc-400 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 transition cursor-pointer"
             title="Delete deployment"
             aria-label="Delete deployment"
           >
-            <Trash2 size={14} />
+            <Trash2 size={15} />
           </button>
         </div>
       </div>
 
       {/* Error alert */}
       {error && (
-        <div className="mt-5 flex items-start gap-2.5 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-300">
-          <AlertCircle size={15} className="mt-0.5 shrink-0" />
+        <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-300">
+          <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Prominent Live Public URL Hero */}
+      {/* Live Public URL Hero */}
       {deployment.url ? (
-        <div className="mt-6 rounded-lg border border-emerald-500/25 bg-[#0d0f12] p-5 shadow-lg">
+        <div className="rounded-2xl border border-emerald-500/25 bg-[#0d0f14] p-6 shadow-lg">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
@@ -465,7 +453,7 @@ export default function DeploymentDetailPage({
                 href={deployment.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1.5 block font-mono text-base font-semibold text-white hover:underline break-all"
+                className="mt-1.5 block font-mono text-base sm:text-lg font-semibold text-white hover:underline break-all"
               >
                 {deployment.url}
               </a>
@@ -474,7 +462,7 @@ export default function DeploymentDetailPage({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => void copyUrl()}
-                className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-white/20 hover:text-white transition"
+                className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-zinc-300 hover:border-white/20 hover:text-white transition"
               >
                 {copiedUrl ? (
                   <>
@@ -493,7 +481,7 @@ export default function DeploymentDetailPage({
                 href={deployment.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition shadow-sm"
+                className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition shadow-sm"
               >
                 <span>Open Project</span>
                 <ExternalLink size={13} />
@@ -502,9 +490,9 @@ export default function DeploymentDetailPage({
           </div>
         </div>
       ) : isPaused ? (
-        <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-300 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Pause size={16} className="text-amber-400 shrink-0" />
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 text-xs text-amber-300 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Pause size={18} className="text-amber-400 shrink-0" />
             <div>
               <p className="font-semibold text-zinc-200">Deployment Paused</p>
               <p className="text-zinc-400 mt-0.5">
@@ -516,15 +504,15 @@ export default function DeploymentDetailPage({
           <button
             onClick={() => void handleResume()}
             disabled={actionLoading}
-            className="flex items-center gap-1.5 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-300 transition shrink-0"
+            className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-amber-300 transition shrink-0"
           >
             {actionLoading ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
             <span>Resume</span>
           </button>
         </div>
       ) : isFailed ? (
-        <div className="mt-6 rounded-lg border border-rose-500/20 bg-rose-500/5 p-4 text-xs text-rose-300 flex items-start gap-2.5">
-          <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-400" />
+        <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5 text-xs text-rose-300 flex items-start gap-3">
+          <AlertCircle size={18} className="mt-0.5 shrink-0 text-rose-400" />
           <div>
             <p className="font-semibold text-rose-200">Deployment Failed</p>
             <p className="text-zinc-400 mt-0.5 leading-relaxed">
@@ -534,8 +522,8 @@ export default function DeploymentDetailPage({
         </div>
       ) : null}
 
-      {/* 4 Pipeline Milestones: Uploaded, Built, Running, Public */}
-      <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      {/* Pipeline Milestones */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Uploaded', done: isUploaded },
           { label: 'Built', done: isBuilt },
@@ -544,7 +532,7 @@ export default function DeploymentDetailPage({
         ].map((step) => (
           <div
             key={step.label}
-            className="flex items-center gap-2.5 rounded-lg border border-white/[0.08] bg-[#0d0f12] px-3.5 py-3"
+            className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#0d0f14] px-4 py-3"
           >
             <div
               className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
@@ -562,7 +550,7 @@ export default function DeploymentDetailPage({
 
             <div>
               <span
-                className={`text-xs font-medium ${
+                className={`text-xs font-semibold ${
                   step.done ? 'text-zinc-200' : 'text-zinc-500'
                 }`}
               >
@@ -577,8 +565,8 @@ export default function DeploymentDetailPage({
       </div>
 
       {/* Meta Specs Grid */}
-      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-3.5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-4">
           <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
             PORT
           </span>
@@ -587,7 +575,7 @@ export default function DeploymentDetailPage({
           </p>
         </div>
 
-        <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-3.5">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-4">
           <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
             FRAMEWORK
           </span>
@@ -596,7 +584,7 @@ export default function DeploymentDetailPage({
           </p>
         </div>
 
-        <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-3.5">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-4">
           <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
             RUNTIME STATUS
           </span>
@@ -605,7 +593,7 @@ export default function DeploymentDetailPage({
           </p>
         </div>
 
-        <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-3.5">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-4">
           <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
             UPDATED
           </span>
@@ -616,7 +604,7 @@ export default function DeploymentDetailPage({
       </div>
 
       {/* Terminal Viewport */}
-      <div className="mt-6">
+      <div>
         <DeploymentTerminal
           logs={logs}
           status={deployment.status}
@@ -637,6 +625,6 @@ export default function DeploymentDetailPage({
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteOpen(false)}
       />
-    </main>
+    </div>
   );
 }

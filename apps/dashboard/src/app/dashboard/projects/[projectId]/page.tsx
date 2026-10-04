@@ -187,29 +187,29 @@ export default function ProjectDetailPage({
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl py-20 text-center">
         <Loader2 size={24} className="animate-spin mx-auto text-zinc-500 mb-2.5" />
         <p className="text-xs text-zinc-400 font-mono">Loading project details...</p>
-      </main>
+      </div>
     );
   }
 
   if (!project) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl py-20 text-center">
         <AlertCircle size={32} className="mx-auto text-zinc-600 mb-2.5" />
         <h2 className="text-base font-semibold text-white">Project Not Found</h2>
         <p className="mt-1 text-xs text-zinc-500">
-          The requested project "{projectId}" does not exist in the database.
+          The requested project "{projectId}" does not exist.
         </p>
         <Link
           href="/dashboard/projects"
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition"
         >
           <ChevronLeft size={13} />
-          Back to Projects
+          <span>Back to Projects</span>
         </Link>
-      </main>
+      </div>
     );
   }
 
@@ -219,9 +219,9 @@ export default function ProjectDetailPage({
   const history = project.deployments || [];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
         <Link href="/dashboard/projects" className="hover:text-white transition">
           Projects
         </Link>
@@ -230,28 +230,28 @@ export default function ProjectDetailPage({
       </div>
 
       {/* Project Header */}
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.07] pb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-6">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               {project.name}
             </h1>
             {project.framework && (
-              <span className="rounded bg-white/[0.05] px-2 py-0.5 text-[10px] font-mono text-zinc-400">
+              <span className="rounded-full bg-white/[0.05] border border-white/[0.08] px-2.5 py-0.5 text-[10px] font-mono text-zinc-400">
                 {project.framework}
               </span>
             )}
           </div>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-zinc-400">
-            <div className="flex items-center gap-1 font-mono text-zinc-500 text-[11px]">
-              <GitBranch size={12} />
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+            <div className="flex items-center gap-1 font-mono text-zinc-400 text-xs">
+              <GitBranch size={13} />
               <span>{project.branch || 'main'}</span>
             </div>
             <span>•</span>
-            <span className="font-mono text-[11px] text-zinc-500">{project.slug}</span>
+            <span className="font-mono text-xs text-zinc-500">{project.slug}</span>
             <span>•</span>
-            <span className="text-[11px] text-zinc-500">Created {formatDate(project.createdAt)}</span>
+            <span className="text-xs text-zinc-500">Created {formatDate(project.createdAt)}</span>
           </div>
         </div>
 
@@ -259,7 +259,7 @@ export default function ProjectDetailPage({
           <button
             onClick={() => void loadProject(true)}
             disabled={refreshing || actionLoading}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#0d0f12] px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-white/20 hover:text-white disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0d0f14] px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:border-white/20 hover:text-white disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw
               size={13}
@@ -270,7 +270,7 @@ export default function ProjectDetailPage({
 
           <Link
             href="/dashboard/deploy"
-            className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200 shadow-sm"
+            className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200 shadow-sm"
           >
             <Rocket size={13} strokeWidth={2.5} />
             <span>New Deployment</span>
@@ -278,7 +278,7 @@ export default function ProjectDetailPage({
 
           <button
             onClick={() => setDeleteProjectOpen(true)}
-            className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-1.5 text-zinc-500 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 transition cursor-pointer"
+            className="rounded-xl border border-white/[0.08] bg-[#0d0f14] p-2 text-zinc-500 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 transition cursor-pointer"
             title="Delete Project"
             aria-label="Delete Project"
           >
@@ -289,30 +289,30 @@ export default function ProjectDetailPage({
 
       {/* Action error banner */}
       {actionError && (
-        <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3.5 text-xs text-rose-300">
+        <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-300">
           <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
           <span>{actionError}</span>
         </div>
       )}
 
       {/* Latest Deployment Hero Card */}
-      <div className="mt-6">
-        <h2 className="text-[10px] font-mono font-semibold uppercase tracking-wider text-zinc-500 mb-2.5">
+      <div>
+        <h2 className="text-xs font-mono font-semibold uppercase tracking-wider text-zinc-500 mb-3">
           Latest Deployment
         </h2>
 
         {latest ? (
-          <div className="rounded-xl border border-white/[0.07] bg-[#0d0f12] p-5">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-6">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2.5 mb-2">
                   <StatusBadge status={latest.status} size="md" />
-                  <span className="font-mono text-[11px] text-zinc-500">
+                  <span className="font-mono text-xs text-zinc-500">
                     ID: {truncateId(latest.id, 10)}
                   </span>
                 </div>
 
-                <div className="mt-2">
+                <div className="mt-3">
                   <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 block mb-1">
                     Public URL:
                   </span>
@@ -330,7 +330,7 @@ export default function ProjectDetailPage({
 
                       <button
                         onClick={() => void copyUrl(latest.url!)}
-                        className="rounded border border-white/10 bg-white/[0.02] p-1 text-zinc-400 hover:text-white transition"
+                        className="rounded-lg border border-white/10 bg-white/[0.04] p-1 text-zinc-400 hover:text-white transition"
                         title="Copy URL"
                       >
                         {copiedUrl ? (
@@ -348,7 +348,7 @@ export default function ProjectDetailPage({
                 </div>
 
                 {latest.port && (
-                  <p className="mt-1.5 text-[11px] font-mono text-zinc-500">
+                  <p className="mt-2 text-xs font-mono text-zinc-500">
                     Container Port: {latest.port}
                   </p>
                 )}
@@ -361,7 +361,7 @@ export default function ProjectDetailPage({
                     href={latest.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200 shadow-sm"
+                    className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200 shadow-sm"
                   >
                     <span>Open</span>
                     <ArrowUpRight size={13} />
@@ -372,7 +372,7 @@ export default function ProjectDetailPage({
                   <button
                     onClick={() => void handlePause(latest.id)}
                     disabled={actionLoading}
-                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.05] transition disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-2 text-xs font-medium text-zinc-300 hover:bg-white/[0.05] transition disabled:opacity-50"
                   >
                     {actionLoading ? (
                       <Loader2 size={12} className="animate-spin" />
@@ -387,7 +387,7 @@ export default function ProjectDetailPage({
                   <button
                     onClick={() => void handleResume(latest.id)}
                     disabled={actionLoading}
-                    className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 transition disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition disabled:opacity-50"
                   >
                     {actionLoading ? (
                       <Loader2 size={12} className="animate-spin" />
@@ -400,7 +400,7 @@ export default function ProjectDetailPage({
 
                 <Link
                   href={`/dashboard/deployments/${latest.id}`}
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.05] transition"
+                  className="rounded-xl border border-white/10 bg-[#14161f] px-3.5 py-2 text-xs font-medium text-zinc-300 hover:text-white transition"
                 >
                   View Details
                 </Link>
@@ -408,15 +408,15 @@ export default function ProjectDetailPage({
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-white/[0.07] bg-[#0d0f12] p-8 text-center text-xs text-zinc-500">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-8 text-center text-xs text-zinc-500">
             No deployments recorded for this project yet.
           </div>
         )}
       </div>
 
       {/* Deployment History Section */}
-      <div className="mt-10">
-        <div className="flex items-center justify-between mb-3">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold tracking-tight text-white">
             Deployment History
           </h2>
@@ -425,23 +425,23 @@ export default function ProjectDetailPage({
           </span>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#0d0f12]">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d0f14]">
           {history.length === 0 ? (
-            <div className="py-10 text-center text-xs text-zinc-500">
+            <div className="py-12 text-center text-xs text-zinc-500">
               No historical deployments found.
             </div>
           ) : (
-            <div className="divide-y divide-white/[0.05]">
+            <div className="divide-y divide-white/[0.04]">
               {history.map((d, index) => {
                 const deploymentNumber = history.length - index;
                 const isItemReady = d.status === 'READY';
                 return (
                   <div
                     key={d.id}
-                    className="flex flex-col gap-2 p-3.5 transition hover:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-2 p-4 transition hover:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/[0.08] bg-[#08090a] font-mono text-[11px] font-semibold text-zinc-400">
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#14161f] font-mono text-xs font-semibold text-zinc-400">
                         #{deploymentNumber}
                       </div>
 
@@ -453,7 +453,7 @@ export default function ProjectDetailPage({
                           <StatusBadge status={d.status} size="sm" />
                         </div>
 
-                        <div className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-500">
+                        <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-500">
                           <span>{truncateId(d.id, 8)}</span>
                           <span>•</span>
                           <span>{formatDate(d.createdAt)}</span>
@@ -480,7 +480,7 @@ export default function ProjectDetailPage({
                           href={d.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-zinc-200 transition"
+                          className="rounded-xl bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-zinc-200 transition shadow-sm"
                         >
                           Open
                         </a>
@@ -488,14 +488,14 @@ export default function ProjectDetailPage({
 
                       <Link
                         href={`/dashboard/deployments/${d.id}`}
-                        className="rounded border border-white/10 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:bg-white/[0.04] transition"
+                        className="rounded-xl border border-white/10 bg-[#14161f] px-3 py-1 text-xs font-medium text-zinc-300 hover:text-white transition"
                       >
                         View
                       </Link>
 
                       <button
                         onClick={() => setDeleteTarget(d)}
-                        className="p-1 text-zinc-500 hover:text-rose-400 transition"
+                        className="p-1.5 text-zinc-500 hover:text-rose-400 transition"
                         title="Delete deployment"
                       >
                         <Trash2 size={13} />
@@ -534,6 +534,6 @@ export default function ProjectDetailPage({
         onConfirm={() => void handleDeleteProject()}
         onCancel={() => setDeleteProjectOpen(false)}
       />
-    </main>
+    </div>
   );
 }

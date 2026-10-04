@@ -133,26 +133,31 @@ export function DeploymentTerminal({
         <div className="flex items-center gap-2.5">
           <TerminalIcon size={14} className="text-zinc-500" />
           <span className="font-mono text-xs font-semibold tracking-wide text-zinc-300">
-            {projectName ? `${projectName}` : 'DEPLOYMENT TERMINAL'}
+            Deployment logs
           </span>
-          {deploymentId && (
-            <span className="hidden font-mono text-[11px] text-zinc-600 sm:inline">
-              #{deploymentId.slice(0, 8)}
+          {projectName && (
+            <span className="hidden font-mono text-[11px] text-zinc-500 sm:inline">
+              · {projectName}
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Live indicator */}
+          {/* Live indicator (Section 9: ● LIVE / BUILDING) */}
           {isActive ? (
-            <div className="flex items-center gap-1.5 rounded bg-emerald-500/10 px-2 py-0.5 text-[11px] font-mono text-emerald-400">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-              <span>STREAMING</span>
+            <div className="flex items-center gap-1.5 rounded bg-blue-500/10 px-2 py-0.5 text-[11px] font-mono text-blue-400 font-medium">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
+              <span>BUILDING</span>
+            </div>
+          ) : status === 'READY' || status === 'RUNNING' ? (
+            <div className="flex items-center gap-1.5 rounded bg-emerald-500/10 px-2 py-0.5 text-[11px] font-mono text-emerald-400 font-medium">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span>LIVE</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500">
               <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
-              <span>TERMINATED</span>
+              <span>{status || 'TERMINATED'}</span>
             </div>
           )}
 

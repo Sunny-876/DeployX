@@ -3,7 +3,6 @@
 import {
   ChangeEvent,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import Link from 'next/link';
@@ -20,11 +19,13 @@ import {
   Play,
   Trash2,
   Globe,
-  Radio,
   ChevronRight,
-  ArrowRight,
+  Cpu,
+  Shield,
+  FolderOpen,
+  Link2,
 } from 'lucide-react';
-import { API_URL, formatErrorMessage, truncateId } from '../../../lib/utils';
+import { API_URL, formatErrorMessage } from '../../../lib/utils';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { DeploymentTerminal } from '../../../components/DeploymentTerminal';
 import { ConfirmModal } from '../../../components/ConfirmModal';
@@ -69,9 +70,6 @@ export default function DeployPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  /*
-   * Health Check on Mount
-   */
   useEffect(() => {
     let mounted = true;
     const checkApiHealth = async () => {
@@ -94,9 +92,6 @@ export default function DeployPage() {
     };
   }, []);
 
-  /*
-   * File selection
-   */
   const selectFile = (selectedFile: File | null) => {
     setError(null);
     setDeployment(null);
@@ -126,9 +121,6 @@ export default function DeployPage() {
     selectFile(event.dataTransfer.files?.[0] || null);
   };
 
-  /*
-   * Load deployment updates
-   */
   const loadDeployment = async (deploymentId: string): Promise<DeploymentDetails | null> => {
     try {
       const response = await fetch(`${API_URL}/deployments/${deploymentId}`, {
@@ -171,9 +163,6 @@ export default function DeployPage() {
     }
   };
 
-  /*
-   * Live polling (1-1.5s interval while building)
-   */
   useEffect(() => {
     const deploymentId = deployment?.id;
     if (!deploymentId) return;
@@ -212,9 +201,6 @@ export default function DeployPage() {
     };
   }, [deployment?.id, deployment?.status]);
 
-  /*
-   * Deploy via API
-   */
   const deploy = async () => {
     if (!file) {
       setError('Please choose a .ZIP archive first.');
@@ -274,7 +260,6 @@ export default function DeployPage() {
         setLogs(data.deployment.logs);
       }
 
-      // Initial status load
       if (data.deployment?.id) {
         void loadDeployment(data.deployment.id);
       }
@@ -285,9 +270,6 @@ export default function DeployPage() {
     }
   };
 
-  /*
-   * Pause deployment
-   */
   const pauseDeployment = async () => {
     const deploymentId = deployment?.id;
     if (!deploymentId) return;
@@ -314,9 +296,6 @@ export default function DeployPage() {
     }
   };
 
-  /*
-   * Resume deployment
-   */
   const resumeDeployment = async () => {
     const deploymentId = deployment?.id;
     if (!deploymentId) return;
@@ -343,9 +322,6 @@ export default function DeployPage() {
     }
   };
 
-  /*
-   * Copy URL
-   */
   const copyUrl = async () => {
     const url = deployment?.url;
     if (!url) return;
@@ -355,9 +331,6 @@ export default function DeployPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  /*
-   * Delete deployment
-   */
   const handleDelete = async () => {
     const deploymentId = deployment?.id;
     if (!deploymentId) return;
@@ -391,9 +364,7 @@ export default function DeployPage() {
   const publicUrl = deployment?.url || '';
   const isLive = (currentStatus === 'READY' || currentStatus === 'RUNNING') && !!publicUrl;
   const statusPaused = currentStatus === 'PAUSED';
-  const statusFailed = currentStatus === 'FAILED';
 
-  // Pipeline check marks
   const isUploaded = !!deployment;
   const isBuilt =
     isLive ||
@@ -421,9 +392,9 @@ export default function DeployPage() {
   const isPublic = isLive;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      {/* Header */}
-      <div className="mb-6">
+    <div className="mx-auto max-w-5xl space-y-6">
+      {/* Breadcrumb & Header (Screenshot 3) */}
+      <div>
         <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2">
           <Link href="/dashboard" className="hover:text-white transition">
             Dashboard
@@ -431,16 +402,17 @@ export default function DeployPage() {
           <ChevronRight size={12} />
           <span className="text-zinc-300">Deploy</span>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
           Deploy Project
         </h1>
-        <p className="mt-1 text-xs text-zinc-400">
+        <p className="mt-1 text-xs sm:text-sm text-zinc-400">
           Upload your project ZIP archive. DeployX builds it locally in Docker and creates a secure temporary public URL.
         </p>
       </div>
 
-      {/* Upload Zone */}
-      <div className="rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5">
+      {/* Main Upload Card Container (Screenshot 3) */}
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-6 sm:p-8 space-y-6">
+        {/* Dashed Dropzone Area */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -448,10 +420,10 @@ export default function DeployPage() {
           }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
-          className={`flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed transition p-6 ${
+          className={`flex min-h-[260px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition p-8 text-center ${
             dragging
-              ? 'border-white bg-white/[0.05]'
-              : 'border-white/[0.12] bg-[#08090a]/50 hover:border-white/25 hover:bg-[#08090a]'
+              ? 'border-white bg-white/[0.04]'
+              : 'border-zinc-700/60 bg-transparent hover:border-zinc-500'
           }`}
         >
           <input
@@ -464,53 +436,94 @@ export default function DeployPage() {
 
           {file ? (
             <div className="flex flex-col items-center text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg border border-white/[0.08] bg-[#111317] text-white">
-                <FileArchive size={22} />
+              <div className="mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-[#14161f] text-white">
+                <FileArchive size={26} />
               </div>
-              <h3 className="font-mono text-sm font-semibold text-white truncate max-w-sm">
+              <h3 className="font-semibold text-base text-white truncate max-w-md">
                 {file.name}
               </h3>
-              <p className="mt-1 font-mono text-[11px] text-zinc-500">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
+              <p className="mt-1 font-mono text-xs text-zinc-400">
+                {(file.size / 1024 / 1024).toFixed(2)} MB • Ready to deploy
               </p>
               <label
                 htmlFor="project-upload"
-                className="mt-3 cursor-pointer font-mono text-xs text-zinc-400 hover:text-white transition underline"
+                className="mt-4 cursor-pointer rounded-xl bg-white px-5 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
               >
-                Choose a different ZIP
+                Change ZIP File
               </label>
             </div>
           ) : (
             <div className="flex flex-col items-center text-center">
-              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg border border-white/[0.08] bg-[#111317] text-zinc-400">
-                <Upload size={18} />
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.06] text-white">
+                <Upload size={20} />
               </div>
-              <h3 className="text-sm font-semibold text-white">
-                Drag and drop your project ZIP here
+              <h3 className="text-base sm:text-lg font-bold text-white">
+                Drop your project ZIP here
               </h3>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1.5 text-xs text-zinc-400 max-w-md">
                 Supports Next.js, React, Vite, Node.js, static HTML/CSS, or Dockerfile projects
               </p>
               <label
                 htmlFor="project-upload"
-                className="mt-4 cursor-pointer rounded-lg border border-white/[0.08] bg-[#111317] px-4 py-1.5 text-xs font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.06]"
+                className="mt-5 inline-flex items-center gap-2 cursor-pointer rounded-xl bg-white px-5 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200 shadow-sm"
               >
-                Browse Files
+                <FolderOpen size={14} />
+                <span>Browse Files</span>
               </label>
             </div>
           )}
         </div>
 
-        {/* Deploy Action Button */}
+        {/* 3 Feature Highlights (Screenshot 3) */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-2">
+          {/* Feature 1 */}
+          <div className="flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-[#12141a] p-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#181a24] text-zinc-300">
+              <Cpu size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white">Runs on your PC</p>
+              <p className="text-[11px] text-zinc-400 truncate">Built and hosted locally using Docker</p>
+            </div>
+          </div>
+
+          {/* Feature 2 */}
+          <div className="flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-[#12141a] p-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#181a24] text-zinc-300">
+              <Link2 size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white">Temporary Public URL</p>
+              <p className="text-[11px] text-zinc-400 truncate">Get a secure Cloudflare Tunnel link</p>
+            </div>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-[#12141a] p-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#181a24] text-zinc-300">
+              <Shield size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white">No Domain Needed</p>
+              <p className="text-[11px] text-zinc-400 truncate">Share your project instantly</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Deploy Action Button (Screenshot 3) */}
         <button
           onClick={() => void deploy()}
           disabled={!file || deploying}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40 shadow-sm"
+          className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-semibold transition shadow-sm ${
+            !file || deploying
+              ? 'bg-white/[0.08] text-zinc-500 cursor-not-allowed'
+              : 'bg-white text-black hover:bg-zinc-200 cursor-pointer'
+          }`}
         >
           {deploying ? (
             <>
               <Loader2 size={14} className="animate-spin" />
-              <span>Uploading & Building...</span>
+              <span>Uploading & Building in Docker...</span>
             </>
           ) : (
             <>
@@ -522,7 +535,7 @@ export default function DeployPage() {
 
         {/* Error message */}
         {error && (
-          <div className="mt-3.5 flex items-start gap-2.5 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300">
+          <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-300">
             <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
             <span>{error}</span>
           </div>
@@ -530,11 +543,11 @@ export default function DeployPage() {
 
         {/* Agent Required Prompt */}
         {agentRequired && (
-          <div className="mt-4 rounded-lg border border-amber-500/20 bg-[#08090a] p-4 text-center">
-            <p className="text-xs font-semibold text-amber-200">
+          <div className="rounded-2xl border border-amber-500/20 bg-[#12141a] p-5 text-center">
+            <p className="text-xs font-semibold text-amber-300">
               Your DeployX Agent is offline.
             </p>
-            <p className="mt-1 text-[11px] text-zinc-400">
+            <p className="mt-1 text-xs text-zinc-400">
               Launch DeployX Agent on your PC, then pair it using the 6-digit code.
             </p>
             {!pairing ? (
@@ -545,22 +558,22 @@ export default function DeployPage() {
                     const data = await res.json().catch(() => null);
                     if (res.ok && data?.code) setPairing({ code: data.code, expiresAt: data.expiresAt });
                   }}
-                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition"
+                  className="rounded-xl bg-white px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition"
                 >
                   Generate Pairing Code
                 </button>
                 <Link
                   href="/download"
-                  className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-zinc-300 hover:text-white transition"
+                  className="rounded-xl border border-white/[0.08] px-3.5 py-1.5 text-xs text-zinc-300 hover:text-white transition"
                 >
                   Download Agent
                 </Link>
               </div>
             ) : (
               <div className="mt-3">
-                <p className="font-mono text-xl font-bold tracking-[0.25em] text-white">{pairing.code}</p>
-                <p className="mt-1 text-[11px] text-zinc-500">Enter this code into your DeployX Agent window.</p>
-                <button onClick={() => setAgentRequired(false)} className="mt-2 text-[11px] text-zinc-400 underline">
+                <p className="font-mono text-2xl font-bold tracking-[0.25em] text-white">{pairing.code}</p>
+                <p className="mt-1 text-xs text-zinc-500">Enter this code into your DeployX Agent window.</p>
+                <button onClick={() => setAgentRequired(false)} className="mt-2 text-xs text-zinc-400 underline">
                   Dismiss
                 </button>
               </div>
@@ -569,9 +582,9 @@ export default function DeployPage() {
         )}
       </div>
 
-      {/* Active Deployment Details Section */}
+      {/* Active Deployment Terminal & Live URL Area */}
       {deployment && (
-        <div className="mt-6 rounded-lg border border-white/[0.08] bg-[#0d0f12] p-5 shadow-lg">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0d0f14] p-6 space-y-5 shadow-2xl">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-4">
             <div>
               <p className="font-mono text-[11px] text-zinc-500 uppercase tracking-wider">
@@ -585,7 +598,7 @@ export default function DeployPage() {
               <StatusBadge status={deployment.status} />
               <Link
                 href={`/dashboard/deployments/${deployment.id}`}
-                className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs text-zinc-400 hover:text-white transition"
+                className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs text-zinc-300 hover:text-white transition"
               >
                 <span>View Details</span>
                 <ChevronRight size={13} />
@@ -594,7 +607,7 @@ export default function DeployPage() {
           </div>
 
           {/* Pipeline milestones */}
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { label: 'Uploaded', done: isUploaded },
               { label: 'Built', done: isBuilt },
@@ -603,7 +616,7 @@ export default function DeployPage() {
             ].map((step) => (
               <div
                 key={step.label}
-                className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-[#08090a] px-3 py-2"
+                className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-[#08090a] px-3.5 py-2.5"
               >
                 <div
                   className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
@@ -622,18 +635,16 @@ export default function DeployPage() {
           </div>
 
           {/* Terminal viewport */}
-          <div className="mt-4">
-            <DeploymentTerminal
-              logs={logs}
-              status={deployment.status}
-              projectName={deployment.project?.name}
-              deploymentId={deployment.id}
-            />
-          </div>
+          <DeploymentTerminal
+            logs={logs}
+            status={deployment.status}
+            projectName={deployment.project?.name}
+            deploymentId={deployment.id}
+          />
 
           {/* Public URL Live Banner */}
           {isLive && publicUrl && (
-            <div className="mt-4 rounded-lg border border-emerald-500/25 bg-[#08090a] p-4">
+            <div className="rounded-2xl border border-emerald-500/25 bg-[#0e1713] p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
@@ -644,7 +655,7 @@ export default function DeployPage() {
                     href={publicUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-1 block font-mono text-sm font-semibold text-white hover:underline break-all"
+                    className="mt-1 block font-mono text-sm sm:text-base font-semibold text-white hover:underline break-all"
                   >
                     {publicUrl}
                   </a>
@@ -653,7 +664,7 @@ export default function DeployPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => void copyUrl()}
-                    className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300 hover:text-white transition"
+                    className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2 text-xs text-zinc-300 hover:text-white transition"
                   >
                     {copied ? (
                       <>
@@ -672,7 +683,7 @@ export default function DeployPage() {
                     href={publicUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 transition"
+                    className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition shadow-sm"
                   >
                     <span>Open Project</span>
                     <ExternalLink size={13} />
@@ -683,12 +694,12 @@ export default function DeployPage() {
           )}
 
           {/* Controls: Pause / Resume / Delete */}
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.08] pt-4">
+          <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.08] pt-4">
             {isLive && (
               <button
                 onClick={() => void pauseDeployment()}
                 disabled={actionLoading}
-                className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white transition disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3.5 py-2 text-xs font-medium text-zinc-300 hover:text-white transition disabled:opacity-40"
               >
                 {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <Pause size={13} />}
                 <span>Pause</span>
@@ -699,7 +710,7 @@ export default function DeployPage() {
               <button
                 onClick={() => void resumeDeployment()}
                 disabled={actionLoading}
-                className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition disabled:opacity-40"
               >
                 {actionLoading ? <Loader2 size={13} className="animate-spin text-emerald-400" /> : <Play size={13} />}
                 <span>Resume</span>
@@ -709,7 +720,7 @@ export default function DeployPage() {
             <button
               onClick={() => setDeleteOpen(true)}
               disabled={actionLoading || deploying}
-              className="flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition disabled:opacity-40 ml-auto"
+              className="flex items-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3.5 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition disabled:opacity-40 ml-auto"
             >
               <Trash2 size={13} />
               <span>Delete Deployment</span>
@@ -730,6 +741,6 @@ export default function DeployPage() {
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteOpen(false)}
       />
-    </main>
+    </div>
   );
 }
